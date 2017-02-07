@@ -21,6 +21,11 @@ type Credentials struct {
 }
 
 type Portal interface {
-	Auth(c Credentials) bool
-	Conversate() []Conversation
+	Auth(Credentials) Token
+	Conversate(Token) []Conversation
+	DeleteConversation(int)
+}
+
+type Token interface {
+	Check(Token, Token) bool
 }

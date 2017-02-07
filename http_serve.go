@@ -5,9 +5,9 @@ import (
 	"github.com/gorilla/mux"
 	//"io"
 	//"net"
+	"bytes"
 	h "net/http"
 	"time"
-	"bytes"
 )
 
 type Route struct {
@@ -45,19 +45,23 @@ func authH(w h.ResponseWriter, r *h.Request) {
 	}
 }
 
+func convH(w h.ResponseWriter, r *h.Request) {
+	//TODO write a json representing the conversations
+}
+
 type HTTPPortal struct {
 	url, cert, key string
 	authS          bool
-	auth, index    Route
-	client *h.Client
+	routes         []Route
+	client         *h.Client
 }
 
-func NewHTTPPortal(u, c, k string, iR, aR Route) (p *HTTPPortal, e error) {
+func NewHTTPPortal(u, c, k string, r []Route) (p *HTTPPortal, e error) {
 	cl := &h.Client{}
-	p = &HTTPPortal{url: u, cert: c, key: k, index: iR,
-		auth: aR, authS: false, client: cl}
+	p = &HTTPPortal{url: u, cert: c, key: k, routes: r,
+		authS: false, client: cl}
 	hr := mux.NewRouter()
-	for _, i := range []Route {iR, aR} {
+	for _, i := range r {
 		hr.Methods(i.Method).
 			Path(i.Pattern).
 			Name(i.Name).
@@ -70,7 +74,8 @@ func NewHTTPPortal(u, c, k string, iR, aR Route) (p *HTTPPortal, e error) {
 	return
 }
 
-func (p *HTTPPortal) Auth(c *Credentials) (x bool) {
+func (p *HTTPPortal) Auth(c *Credentials) (x Token) {
+	//TODO: Token is JWT??
 	x = false
 	b, e := json.Marshal(c)
 	if e == nil {
@@ -83,6 +88,6 @@ func (p *HTTPPortal) Auth(c *Credentials) (x bool) {
 	return
 }
 
-func (p *HTTPPortal) Conversate() (c []Conversation) {
-	
+func (p *HTTPPortal) Conversate(t Token) (c []Conversation) {
+	return
 }
