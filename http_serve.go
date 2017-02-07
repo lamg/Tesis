@@ -6,6 +6,8 @@ import (
 	//"io"
 	//"net"
 	h "net/http"
+	"time"
+	"bytes"
 )
 
 type Route struct {
@@ -13,28 +15,6 @@ type Route struct {
 	Method      string
 	Pattern     string
 	HandlerFunc h.HandlerFunc
-}
-
-var routes = []Route{
-	Route{"Root", "GET", "/", rootH},
-	Route{"Root", "POST", "/", authH},
-}
-
-func serveTLS() (e error) {
-	var (
-		hp = ":10443"
-		ce = "cert.pem"
-		ke = "key.pem"
-	)
-	hr := mux.NewRouter()
-	for _, i := range routes {
-		hr.Methods(i.Method).
-			Path(i.Pattern).
-			Name(i.Name).
-			Handler(i.HandlerFunc)
-	}
-	e = h.ListenAndServeTLS(hp, ce, ke, hr)
-	return
 }
 
 func rootH(w h.ResponseWriter, r *h.Request) {
@@ -51,11 +31,6 @@ func rootH(w h.ResponseWriter, r *h.Request) {
 	w.Write(ms)
 }
 
-type Credentials struct {
-	user string
-	pass string
-}
-
 func authH(w h.ResponseWriter, r *h.Request) {
 	c, d := &Credentials{}, json.NewDecoder(r.Body)
 	if e := d.Decode(&c); e == nil {
@@ -64,8 +39,50 @@ func authH(w h.ResponseWriter, r *h.Request) {
 			m = []byte("OK")
 		} else {
 			m = []byte("¡Error!")
-			w.WriteHeader(401)//401 is HTTP auth failed code
+			w.WriteHeader(401) //401 is HTTP auth failed code
 		}
 		w.Write(m)
 	}
+}
+
+type HTTPPortal struct {
+	url, cert, key string
+	authS          bool
+	auth, index    Route
+	client *h.Client
+}
+
+func NewHTTPPortal(u, c, k string, iR, aR Route) (p *HTTPPortal, e error) {
+	cl := &h.Client{}
+	p = &HTTPPortal{url: u, cert: c, key: k, index: iR,
+		auth: aR, authS: false, client: cl}
+	hr := mux.NewRouter()
+	for _, i := range []Route {iR, aR} {
+		hr.Methods(i.Method).
+			Path(i.Pattern).
+			Name(i.Name).
+			Handler(i.HandlerFunc)
+	}
+	go func() {
+		e = h.ListenAndServeTLS(u, c, k, hr)
+	}()
+	time.Sleep(1000000 * time.Nanosecond)
+	return
+}
+
+func (p *HTTPPortal) Auth(c *Credentials) (x bool) {
+	x = false
+	b, e := json.Marshal(c)
+	if e == nil {
+		br := bytes.NewReader(b)
+		r, e := p.client.Post(p.url, "application/json", br)
+		if e == nil {
+			x = r.StatusCode == 200
+		}
+	}
+	return
+}
+
+func (p *HTTPPortal) Conversate() (c []Conversation) {
+	
 }
