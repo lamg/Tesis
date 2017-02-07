@@ -13,6 +13,11 @@ func init() {
 	password = os.Getenv("UPR_PASS")
 }
 
+func TestLDAPAuth(t *testing.T) {
+	b := auth(user, password)
+	assert.True(t, b, "Failed authentication")
+}
+
 func TestConn(t *testing.T) {
 	var (
 		fp = "x" //arbitrary password

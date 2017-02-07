@@ -1,25 +1,58 @@
 package tesis
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
-	"net/http"
+	"bytes"
+	"crypto/tls"
+	"encoding/json"
+	a "github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"net/http"
+	"testing"
+	"time"
 )
 
-func TestServe (t *testing.T) {
-	//TODO
-	l, e := serve()
+var (
+	c   *http.Client
+	url = "https://localhost:10443"
+)
+
+func init() {
+	go serveTLS() //what if it fails to start
 	//start server
-	r, e := http.Get("http://localhost:8080")
+
+	cfg := &tls.Config{InsecureSkipVerify: true}
+	tr := &http.Transport{TLSClientConfig: cfg}
+	c = &http.Client{Transport: tr}
+	time.Sleep(1000000 * time.Nanosecond)
+}
+
+func TestServe(t *testing.T) {
+	r, e := c.Get(url)
 	//client make request
-	assert.NoError(t, e)
-	bd, e := ioutil.ReadAll(r.Body)
-	assert.NoError(t, e)
-	s := string(bd)
-	t.Logf("s: %s", s)
+	if a.NoError(t, e) {
+		bd, e := ioutil.ReadAll(r.Body)
+		if a.NoError(t, e) {
+			s := string(bd)
+			t.Logf("s: %s", s)
+		}
+	}
 	//analyze response
 	//close server
-	e = l.Close()
-	assert.NoError(t, e)
+}
+
+func TestAuth(t *testing.T) {
+	cr := Credentials{user: user, pass: password}
+	b, e := json.Marshal(cr)
+	if a.NoError(t, e) {
+		br := bytes.NewReader(b)
+		r, e := c.Post(url, "application/json", br)
+		//use assert.HTTPError
+		if a.NoError(t, e) {
+			bd, e := ioutil.ReadAll(r.Body)
+			if a.NoError(t, e) {
+				s := string(bd)
+				t.Logf("s: %s", s)
+			}
+		}
+	}
 }

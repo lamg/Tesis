@@ -6,6 +6,16 @@ import (
 	"github.com/go-ldap/ldap"
 )
 
+func auth(u, p string) (b bool) {
+	var e error
+	c, e := conn(u,p)
+	b = e == nil
+	if b {
+		c.Close()
+	}
+	return
+}
+
 // u: user
 // p: password
 func conn(u, p string) (c *ldap.Conn, e error) {
