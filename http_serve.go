@@ -8,6 +8,9 @@ import (
 	"bytes"
 	h "net/http"
 	"time"
+	"fmt"
+	"crypto/tls"
+	"github.com/dgrijalva/jwt-go"
 )
 
 type Route struct {
@@ -35,7 +38,16 @@ func authH(w h.ResponseWriter, r *h.Request) {
 	c, d := &Credentials{}, json.NewDecoder(r.Body)
 	if e := d.Decode(&c); e == nil {
 		var m []byte
-		if r := auth(c.user, c.pass); r {
+		if r := auth(c.user, c.pass); r {			
+			t := jwt.New(jwt.SigningMethodHS256)
+			// t.Claims["id"] = "coco"
+			// t.Claims["iat"] = time.Now().Unix()
+			// t.Claims["exp"] = time.Now().Add(time.Second * 3600 * 24).Unix()
+			js, e := t.SignedString([]byte("secret"))
+			if e == nil {
+				w.Header().Set("Auth", js)
+				
+			}
 			m = []byte("OK")
 		} else {
 			m = []byte("¡Error!")
@@ -43,10 +55,6 @@ func authH(w h.ResponseWriter, r *h.Request) {
 		}
 		w.Write(m)
 	}
-}
-
-func convH(w h.ResponseWriter, r *h.Request) {
-	//TODO write a json representing the conversations
 }
 
 type HTTPPortal struct {
@@ -57,7 +65,9 @@ type HTTPPortal struct {
 }
 
 func NewHTTPPortal(u, c, k string, r []Route) (p *HTTPPortal, e error) {
-	cl := &h.Client{}
+	cfg := &tls.Config{ InsecureSkipVerify: true}
+	tr := &h.Transport{TLSClientConfig: cfg}
+	cl := &h.Client{ Transport: tr}
 	p = &HTTPPortal{url: u, cert: c, key: k, routes: r,
 		authS: false, client: cl}
 	hr := mux.NewRouter()
@@ -74,20 +84,18 @@ func NewHTTPPortal(u, c, k string, r []Route) (p *HTTPPortal, e error) {
 	return
 }
 
-func (p *HTTPPortal) Auth(c *Credentials) (x Token) {
-	//TODO: Token is JWT??
-	x = false
+func (p *HTTPPortal) Auth(c *Credentials) (t *jwt.Token, e error) {
 	b, e := json.Marshal(c)
 	if e == nil {
 		br := bytes.NewReader(b)
-		r, e := p.client.Post(p.url, "application/json", br)
+		u := fmt.Sprintf("https://%s",p.url)
+		r, e := p.client.Post(u, "application/json", br)
 		if e == nil {
-			x = r.StatusCode == 200
+			js := r.Header.Get("Auth")
+			//TODO
+			t, e = jwt.Parse(js, "secret")//KeyFunc!
+			
 		}
 	}
-	return
-}
-
-func (p *HTTPPortal) Conversate(t Token) (c []Conversation) {
 	return
 }

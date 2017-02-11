@@ -12,7 +12,7 @@ import (
 )*/
 
 func TestHTTPPortal(t *testing.T) {
-	hp := ":10443"
+	hp := "localhost:10443"
 	ce := "cert.pem"
 	ke := "key.pem"
 	rs := []Route{
@@ -25,5 +25,7 @@ func TestHTTPPortal(t *testing.T) {
 	a.HTTPError(t, rootH, "GET", "", nil)
 
 	cr := &Credentials{user: user, pass: password}
-	a.True(t, s.Auth(cr), "Auth failed")
+	j, e := s.Auth(cr)
+	a.NoError(t, e, "Auth failed")
+	t.Logf("raw: %s", j.Raw)
 }

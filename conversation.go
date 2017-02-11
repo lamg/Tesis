@@ -1,18 +1,26 @@
 package tesis
 
-//This file defines the Conversations
-//carried by the user
+import (
+	"time"
+	"github.com/dgrijalva/jwt-go"
+)
 
-type Conversation interface {
-	Messages() []Message
-	Participate(subject, recipient, body string)
+//cuantos correos has mandado y recibido
+//cuantos megas has consumido de tu cuenta
+//de correo y de internet
+
+type Info struct {
+	SentMessages int
+	RecvMessages int
+	MailStorage  int
+	InternetDwnl int
+	WifiLogons   WifiL
 }
 
-type Message interface {
-	Subject() string
-	Recipient() string
-	Remitent() string
-	Body() string
+type WifiL struct {
+	Ip string
+	Place string
+	Date time.Time
 }
 
 type Credentials struct {
@@ -21,11 +29,5 @@ type Credentials struct {
 }
 
 type Portal interface {
-	Auth(Credentials) Token
-	Conversate(Token) []Conversation
-	DeleteConversation(int)
-}
-
-type Token interface {
-	Check(Token, Token) bool
+	Auth(Credentials) (jwt.Token, error)
 }
