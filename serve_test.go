@@ -1,31 +1,39 @@
 package tesis
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	a "github.com/stretchr/testify/assert"
-
 	"testing"
 )
 
-/*var (
-	c   *http.Client
-	url = "https://localhost:10443"
-)*/
+type DummyAuth struct {
+}
+
+func (d *DummyAuth) Authenticate(u, p string) (b bool) {
+	b = u == p
+	return
+}
 
 func TestHTTPPortal(t *testing.T) {
 	hp := "localhost:10443"
 	ce := "cert.pem"
 	ke := "key.pem"
-	rs := []Route{
-		Route{"Root", "GET", "/", rootH},
-		Route{"Auth", "POST", "/", authH},
-		Route{"Conv", "GET", "/conv", convH}}
-	
-	s, e := NewHTTPPortal(hp, ce, ke, rs)
+	au := &DummyAuth{}
+	_, e := NewHTTPPortal(hp, ce, ke, au)
 	a.NoError(t, e, "Error creating server")
 	a.HTTPError(t, rootH, "GET", "", nil)
 
-	cr := &Credentials{user: user, pass: password}
-	j, e := s.Auth(cr)
+	cr := &Credentials{User: "a", Pass: "a"}
+	cl := NewPortalUser(hp)
+	j, e := cl.Auth(cr)
 	a.NoError(t, e, "Auth failed")
-	t.Logf("raw: %s", j.Raw)
+	if a.NotNil(t, j) {
+		t.Logf("Valid: %t", j)
+	}
+}
+
+func TestGenKey(t *testing.T) {
+	k, e := rsa.GenerateKey(rand.Reader, 2048)
+	a.True(t, k != nil && e == nil)
 }

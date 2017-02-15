@@ -6,38 +6,20 @@ import (
 	"os"
 )
 
-var password, user string
-
-func init() {
-	user = os.Getenv("UPR_USER")
-	password = os.Getenv("UPR_PASS")
-}
+const (
+	//ldap server address
+	lds = "ad.upr.edu.cu"
+	//account suffix
+	sf = "@upr.edu.cu"
+	//ldap server port
+	ldp = 636
+)
 
 func TestLDAPAuth(t *testing.T) {
-	b := auth(user, password)
-	assert.True(t, b, "Failed authentication")
-}
-
-func TestConn(t *testing.T) {
-	var (
-		fp = "x" //arbitrary password
-		fu = "y" //non registered user
-	)
-	_, e := conn(user, password)
-	assert.NoError(t, e)
-
-	_, e = conn(fu, fp)
-	assert.Error(t, e)
-}
-
-func TestSearch(t *testing.T) {
-	c, e := conn(user, password)
-	if assert.NoError(t,e) {
-		n, e := search(user, c)
-		b := assert.NoError(t, e)
-		for i := 0; b && i != len(n); i++ {
-			t.Logf("Name: %s, V:%v",n[i].Name,n[i].Values)
-		}
-		c.Close()
+	u, p := os.Getenv("UPR_USER"), os.Getenv("UPR_PASS")
+	l, e := NewLDAPAuth(lds, sf, ldp)
+	if assert.NoError(t, e) {
+		b := l.Authenticate(u, p)
+		assert.True(t, b, "Failed authentication")
 	}
 }

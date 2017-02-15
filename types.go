@@ -2,7 +2,7 @@ package tesis
 
 import (
 	"time"
-	"github.com/dgrijalva/jwt-go"
+	_ "github.com/dgrijalva/jwt-go"
 )
 
 //cuantos correos has mandado y recibido
@@ -24,10 +24,10 @@ type WifiL struct {
 }
 
 type Credentials struct {
-	user string
-	pass string
+	User string
+	Pass string
 }
 
-type Portal interface {
-	Auth(Credentials) (jwt.Token, error)
+type Authenticator interface {
+	Authenticate(user, password string) bool
 }
