@@ -41,3 +41,22 @@ func (p *PortalUser) Auth(c *Credentials) (a bool, e error) {
 	}
 	return
 }
+
+func (p *PortalUser) Check() (r bool, e error) {
+	r = false
+	u := fmt.Sprintf("https://%s/%s", p.url, "check")
+	var q *h.Request
+	q, e = h.NewRequest("GET", u, nil)
+	if e == nil {
+		q.Header = map[string][]string{
+			AuthHd: {p.tk},
+		}
+		//create a request with appropiate header
+		var rp *h.Response
+		rp, e = p.client.Do(q)
+		if e == nil {
+			r = rp.StatusCode == 200
+		}
+	}
+	return
+}

@@ -1,8 +1,8 @@
 package tesis
 
 import (
+	"github.com/dgrijalva/jwt-go"
 	"time"
-	_ "github.com/dgrijalva/jwt-go"
 )
 
 //cuantos correos has mandado y recibido
@@ -18,14 +18,15 @@ type Info struct {
 }
 
 type WifiL struct {
-	Ip string
+	Ip    string
 	Place string
-	Date time.Time
+	Date  time.Time
 }
 
 type Credentials struct {
-	User string
-	Pass string
+	User string `json:"user"`
+	Pass string `json:"pass"`
+	jwt.StandardClaims
 }
 
 type Authenticator interface {

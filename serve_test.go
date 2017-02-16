@@ -31,6 +31,10 @@ func TestHTTPPortal(t *testing.T) {
 	if a.NotNil(t, j) {
 		t.Logf("Valid: %t", j)
 	}
+	j, e = cl.Check()
+	if !a.True(t, j && e == nil) {
+		t.Logf("%t %s", j, e.Error())
+	}
 }
 
 func TestGenKey(t *testing.T) {

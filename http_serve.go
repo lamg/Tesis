@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
-	"fmt"
+	_ "fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	h "net/http"
@@ -40,6 +40,11 @@ func NewHTTPPortal(u, c, k string, a Authenticator) (p *HTTPPortal, e error) {
 		Route{"Auth", "POST", "/",
 			func(w h.ResponseWriter, r *h.Request) {
 				authH(w, r, pk, a)
+			},
+		},
+		Route{"Check", "GET", "/check",
+			func(w h.ResponseWriter, r *h.Request) {
+				verifyTokenH(w, r, &pk.PublicKey)
 			},
 		},
 	}
@@ -80,10 +85,9 @@ func authH(w h.ResponseWriter, r *h.Request, p *rsa.PrivateKey, a Authenticator)
 	c, d := &Credentials{}, json.NewDecoder(r.Body)
 	if e := d.Decode(&c); e == nil {
 		var m []byte
-		fmt.Printf("%s %t\n", c.User, c.User == c.Pass)
 		if r := a.Authenticate(c.User, c.Pass); r {
 			//user is authenticated
-			t := jwt.New(jwt.GetSigningMethod("RS256"))
+			t := jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), c)
 			js, e := t.SignedString(p)
 			if e == nil {
 				w.Header().Set(AuthHd, js)
@@ -98,5 +102,19 @@ func authH(w h.ResponseWriter, r *h.Request, p *rsa.PrivateKey, a Authenticator)
 			w.WriteHeader(401) //401 is HTTP auth failed code
 		}
 		w.Write(m)
+	}
+}
+
+func verifyTokenH(w h.ResponseWriter, r *h.Request, p *rsa.PublicKey) {
+	js := r.Header.Get(AuthHd)
+	t, e := jwt.Parse(js,
+		func(x *jwt.Token) (a interface{}, d error) {
+			a, d = p, nil
+			return
+		})
+	if e == nil && !t.Valid {
+		w.WriteHeader(401)
+	} else if e != nil {
+		w.WriteHeader(300) //TODO find proper code
 	}
 }
