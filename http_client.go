@@ -42,9 +42,9 @@ func (p *PortalUser) Auth(c *Credentials) (a bool, e error) {
 	return
 }
 
-func (p *PortalUser) Check() (r bool, e error) {
+func (p *PortalUser) Info() (r bool, e error) {
 	r = false
-	u := fmt.Sprintf("https://%s/%s", p.url, "check")
+	u := fmt.Sprintf("https://%s/%s", p.url, "info")
 	var q *h.Request
 	q, e = h.NewRequest("GET", u, nil)
 	if e == nil {

@@ -42,9 +42,9 @@ func NewHTTPPortal(u, c, k string, a Authenticator) (p *HTTPPortal, e error) {
 				authH(w, r, pk, a)
 			},
 		},
-		Route{"Check", "GET", "/check",
+		Route{"Info", "GET", "/info",
 			func(w h.ResponseWriter, r *h.Request) {
-				verifyTokenH(w, r, &pk.PublicKey)
+				infoH(w, r, &pk.PublicKey)
 			},
 		},
 	}
@@ -105,16 +105,23 @@ func authH(w h.ResponseWriter, r *h.Request, p *rsa.PrivateKey, a Authenticator)
 	}
 }
 
-func verifyTokenH(w h.ResponseWriter, r *h.Request, p *rsa.PublicKey) {
-	js := r.Header.Get(AuthHd)
-	t, e := jwt.Parse(js,
+func infoH(w h.ResponseWriter, r *h.Request, p *rsa.PublicKey) {
+	t, e := verifyToken(r, p)
+	if e == nil && t.Valid {
+		//get info for t.Claims["user"]
+		//write info to the response
+	} else {
+		w.WriteHeader(401)
+	}
+}
+
+func parseToken(r *h.Request, p *rsa.PublicKey) (t *jwt.Token, e error) {
+	var js string
+	js = r.Header.Get(AuthHd)
+	t, e = jwt.Parse(js,
 		func(x *jwt.Token) (a interface{}, d error) {
 			a, d = p, nil
 			return
 		})
-	if e == nil && !t.Valid {
-		w.WriteHeader(401)
-	} else if e != nil {
-		w.WriteHeader(300) //TODO find proper code
-	}
+	return
 }
