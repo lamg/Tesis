@@ -106,7 +106,7 @@ func authH(w h.ResponseWriter, r *h.Request, p *rsa.PrivateKey, a Authenticator)
 }
 
 func infoH(w h.ResponseWriter, r *h.Request, p *rsa.PublicKey) {
-	t, e := verifyToken(r, p)
+	t, e := parseToken(r, p)
 	if e == nil && t.Valid {
 		//get info for t.Claims["user"]
 		//write info to the response
