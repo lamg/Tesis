@@ -10,11 +10,11 @@ import (
 //de correo y de internet
 
 type Info struct {
-	SentMessages int
+	SentMessages int `json: "sentMessages"`
 	RecvMessages int
 	MailStorage  int
 	InternetDwnl int
-	WifiLogons   WifiL
+	WifiLogons   []WifiL
 }
 
 type WifiL struct {
@@ -26,9 +26,17 @@ type WifiL struct {
 type Credentials struct {
 	User string `json:"user"`
 	Pass string `json:"pass"`
+}
+
+type User struct {
+	UserName string `json:"user"`
 	jwt.StandardClaims
 }
 
 type Authenticator interface {
 	Authenticate(user, password string) bool
+}
+
+type DBManager interface {
+	UserInfo(string) (*Info, error)
 }

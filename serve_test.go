@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	a "github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 type DummyAuth struct {
@@ -15,12 +16,33 @@ func (d *DummyAuth) Authenticate(u, p string) (b bool) {
 	return
 }
 
+type DummyManager struct {
+}
+
+func (m *DummyManager) UserInfo(u string) (inf *Info, e error) {
+	inf = &Info{
+		SentMessages: 18,
+		RecvMessages: 40,
+		MailStorage:  67,
+		InternetDwnl: 87,
+		WifiLogons: []WifiL{
+			WifiL{
+				Ip:    "192.168.0.10",
+				Place: "Rectoría",
+				Date:  time.Now(),
+			},
+		},
+	}
+	return
+}
+
 func TestHTTPPortal(t *testing.T) {
 	hp := "localhost:10443"
 	ce := "cert.pem"
 	ke := "key.pem"
 	au := &DummyAuth{}
-	_, e := NewHTTPPortal(hp, ce, ke, au)
+	qr := &DummyManager{}
+	_, e := NewHTTPPortal(hp, ce, ke, au, qr)
 	a.NoError(t, e, "Error creating server")
 	a.HTTPError(t, rootH, "GET", "", nil)
 
@@ -31,9 +53,10 @@ func TestHTTPPortal(t *testing.T) {
 	if a.NotNil(t, j) {
 		t.Logf("Valid: %t", j)
 	}
-	j, e = cl.Info()
-	if !a.True(t, j && e == nil) {
-		t.Logf("%t %s", j, e.Error())
+	var inf *Info
+	inf, e = cl.Info()
+	if a.NoError(t, e) {
+		t.Logf("%v", inf)
 	}
 }
 

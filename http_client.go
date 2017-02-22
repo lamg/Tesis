@@ -42,20 +42,26 @@ func (p *PortalUser) Auth(c *Credentials) (a bool, e error) {
 	return
 }
 
-func (p *PortalUser) Info() (r bool, e error) {
-	r = false
-	u := fmt.Sprintf("https://%s/%s", p.url, "info")
-	var q *h.Request
+func (p *PortalUser) Info() (inf *Info, e error) {
+	var (
+		u string
+		q *h.Request
+	)
+	u = fmt.Sprintf("https://%s/%s", p.url, "info")
 	q, e = h.NewRequest("GET", u, nil)
 	if e == nil {
+		var rp *h.Response
 		q.Header = map[string][]string{
 			AuthHd: {p.tk},
 		}
 		//create a request with appropiate header
-		var rp *h.Response
 		rp, e = p.client.Do(q)
-		if e == nil {
-			r = rp.StatusCode == 200
+		if e == nil && rp.StatusCode == 200 {
+			var d *json.Decoder
+			inf = new(Info)
+			d = json.NewDecoder(rp.Body)
+			e = d.Decode(inf)
+			rp.Body.Close()
 		}
 	}
 	return

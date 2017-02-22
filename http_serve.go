@@ -32,27 +32,31 @@ type HTTPPortal struct {
 //  c: cert.pem path
 //  k: key.pem path
 //  a: User authentication interface
-func NewHTTPPortal(u, c, k string, a Authenticator) (p *HTTPPortal, e error) {
+func NewHTTPPortal(u, c, k string, a Authenticator, q DBManager) (p *HTTPPortal, e error) {
+	//TODO graceful shutdown
 	var pk *rsa.PrivateKey
 	pk, e = rsa.GenerateKey(rand.Reader, 2048)
-	r := []Route{
-		Route{"Root", "GET", "/", rootH},
-		Route{"Auth", "POST", "/",
-			func(w h.ResponseWriter, r *h.Request) {
-				authH(w, r, pk, a)
-			},
-		},
-		Route{"Info", "GET", "/info",
-			func(w h.ResponseWriter, r *h.Request) {
-				infoH(w, r, &pk.PublicKey)
-			},
-		},
-	}
-
 	if e == nil {
+		var (
+			r  []Route
+			hr *mux.Router
+		)
 		p = &HTTPPortal{url: u, cert: c, key: k, routes: r,
 			pkey: pk}
-		hr := mux.NewRouter()
+		r = []Route{
+			Route{"Root", "GET", "/", rootH},
+			Route{"Auth", "POST", "/",
+				func(w h.ResponseWriter, r *h.Request) {
+					authH(w, r, pk, a)
+				},
+			},
+			Route{"Info", "GET", "/info",
+				func(w h.ResponseWriter, r *h.Request) {
+					infoH(w, r, &pk.PublicKey, q)
+				},
+			},
+		}
+		hr = mux.NewRouter()
 		for _, i := range r {
 			hr.Methods(i.Method).
 				Path(i.Pattern).
@@ -75,20 +79,38 @@ func rootH(w h.ResponseWriter, r *h.Request) {
 		ut = "utf-8"
 		ms = []byte("¡Hola Mundo!")
 	)
-
+	//TODO
+	//parse template
+	//serve html
 	w.Header().Set(ct, tp)
 	w.Header().Set(cs, ut)
 	w.Write(ms)
 }
 
 func authH(w h.ResponseWriter, r *h.Request, p *rsa.PrivateKey, a Authenticator) {
-	c, d := &Credentials{}, json.NewDecoder(r.Body)
-	if e := d.Decode(&c); e == nil {
-		var m []byte
-		if r := a.Authenticate(c.User, c.Pass); r {
+	var (
+		c *Credentials
+		d *json.Decoder
+		e error
+	)
+	c, d = new(Credentials), json.NewDecoder(r.Body)
+	if e = d.Decode(c); e == nil {
+		var (
+			m []byte
+			r bool
+		)
+		r = a.Authenticate(c.User, c.Pass)
+		if r {
 			//user is authenticated
-			t := jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), c)
-			js, e := t.SignedString(p)
+			var (
+				u  *User
+				t  *jwt.Token
+				js string
+			)
+			u = &User{UserName: c.User}
+
+			t = jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), u)
+			js, e = t.SignedString(p)
 			if e == nil {
 				w.Header().Set(AuthHd, js)
 				m = []byte("OK")
@@ -105,11 +127,32 @@ func authH(w h.ResponseWriter, r *h.Request, p *rsa.PrivateKey, a Authenticator)
 	}
 }
 
-func infoH(w h.ResponseWriter, r *h.Request, p *rsa.PublicKey) {
-	t, e := parseToken(r, p)
+func infoH(w h.ResponseWriter, r *h.Request, p *rsa.PublicKey, q DBManager) {
+	var (
+		t *jwt.Token
+		e error
+	)
+	t, e = parseToken(r, p)
 	if e == nil && t.Valid {
-		//get info for t.Claims["user"]
-		//write info to the response
+		var (
+			inf *Info
+			b   []byte
+			clm jwt.MapClaims
+			us  string
+		)
+		clm = t.Claims.(jwt.MapClaims)
+		us = clm["user"].(string)
+		inf, e = q.UserInfo(us) //panic
+		if e == nil {
+			b, e = json.Marshal(inf)
+			if e == nil {
+				w.Write(b)
+			} else {
+				w.Write([]byte("Marshal failed"))
+			}
+		} else {
+			w.Write([]byte("DB query failed"))
+		}
 	} else {
 		w.WriteHeader(401)
 	}
