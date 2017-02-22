@@ -8,6 +8,7 @@ import (
 	_ "fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
+	"html/template"
 	h "net/http"
 	"time"
 )
@@ -73,18 +74,17 @@ func NewHTTPPortal(u, c, k string, a Authenticator, q DBManager) (p *HTTPPortal,
 
 func rootH(w h.ResponseWriter, r *h.Request) {
 	var (
-		ct = "Content-Type"
-		tp = "text/plain"
-		cs = "charset"
-		ut = "utf-8"
-		ms = []byte("¡Hola Mundo!")
+		t *template.Template
+		e error
 	)
-	//TODO
-	//parse template
-	//serve html
-	w.Header().Set(ct, tp)
-	w.Header().Set(cs, ut)
-	w.Write(ms)
+	t, e = template.ParseFiles("serv/index.html")
+	if e == nil {
+		t.Execute(w, nil)
+	} else {
+		var m []byte
+		m = []byte("Error loading index.html")
+		w.Write(m)
+	}
 }
 
 func authH(w h.ResponseWriter, r *h.Request, p *rsa.PrivateKey, a Authenticator) {

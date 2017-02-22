@@ -37,18 +37,22 @@ func (m *DummyManager) UserInfo(u string) (inf *Info, e error) {
 }
 
 func TestHTTPPortal(t *testing.T) {
+	var e error
 	hp := "localhost:10443"
-	ce := "cert.pem"
-	ke := "key.pem"
+	ce := "serv/cert.pem"
+	ke := "serv/key.pem"
 	au := &DummyAuth{}
 	qr := &DummyManager{}
-	_, e := NewHTTPPortal(hp, ce, ke, au, qr)
+	_, e = NewHTTPPortal(hp, ce, ke, au, qr)
 	a.NoError(t, e, "Error creating server")
 	a.HTTPError(t, rootH, "GET", "", nil)
 
-	cr := &Credentials{User: "a", Pass: "a"}
-	cl := NewPortalUser(hp)
-	j, e := cl.Auth(cr)
+	var j bool
+	var cr *Credentials
+	var cl *PortalUser
+	cr = &Credentials{User: "a", Pass: "a"}
+	cl = NewPortalUser(hp)
+	j, e = cl.Auth(cr)
 	a.NoError(t, e, "Auth failed")
 	if a.NotNil(t, j) {
 		t.Logf("Valid: %t", j)
@@ -57,6 +61,12 @@ func TestHTTPPortal(t *testing.T) {
 	inf, e = cl.Info()
 	if a.NoError(t, e) {
 		t.Logf("%v", inf)
+	}
+
+	var s string
+	s, e = cl.Index()
+	if a.NoError(t, e) {
+		t.Log(s)
 	}
 }
 

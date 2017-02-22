@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	h "net/http"
 )
 
@@ -43,10 +44,9 @@ func (p *PortalUser) Auth(c *Credentials) (a bool, e error) {
 }
 
 func (p *PortalUser) Info() (inf *Info, e error) {
-	var (
-		u string
-		q *h.Request
-	)
+	var u string
+	var q *h.Request
+
 	u = fmt.Sprintf("https://%s/%s", p.url, "info")
 	q, e = h.NewRequest("GET", u, nil)
 	if e == nil {
@@ -62,6 +62,20 @@ func (p *PortalUser) Info() (inf *Info, e error) {
 			d = json.NewDecoder(rp.Body)
 			e = d.Decode(inf)
 			rp.Body.Close()
+		}
+	}
+	return
+}
+
+func (p *PortalUser) Index() (s string, e error) {
+	var r *h.Response
+	var b []byte
+
+	r, e = p.client.Get(fmt.Sprintf("https://%s", p.url))
+	if e == nil {
+		b, e = ioutil.ReadAll(r.Body)
+		if e == nil {
+			s = string(b)
 		}
 	}
 	return
