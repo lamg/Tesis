@@ -1,51 +1,28 @@
 package tesis
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	a "github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 	"time"
 )
 
-type DummyAuth struct {
-}
-
-func (d *DummyAuth) Authenticate(u, p string) (b bool) {
-	b = u == p
-	return
-}
-
-type DummyManager struct {
-}
-
-func (m *DummyManager) UserInfo(u string) (inf *Info, e error) {
-	inf = &Info{
-		SentMessages: 18,
-		RecvMessages: 40,
-		MailStorage:  67,
-		InternetDwnl: 87,
-		WifiLogons: []WifiL{
-			WifiL{
-				Ip:    "192.168.0.10",
-				Place: "Rectoría",
-				Date:  time.Now(),
-			},
-		},
-	}
-	return
-}
-
 func TestHTTPPortal(t *testing.T) {
 	var e error
+	var h *HTTPPortal
+	os.Chdir("serv")
+	// { files referenced in http_serve.go exist
+	// in cwd }
 	hp := "localhost:10443"
-	ce := "serv/cert.pem"
-	ke := "serv/key.pem"
 	au := &DummyAuth{}
 	qr := &DummyManager{}
-	_, e = NewHTTPPortal(hp, ce, ke, au, qr)
+	h, e = NewHTTPPortal(hp, au, qr)
 	a.NoError(t, e, "Error creating server")
-	a.HTTPError(t, rootH, "GET", "", nil)
+	go h.Serve()
+	time.Sleep(1 * time.Second)
 
 	var j bool
 	var cr *Credentials
@@ -68,6 +45,10 @@ func TestHTTPPortal(t *testing.T) {
 	if a.NoError(t, e) {
 		t.Log(s)
 	}
+
+	var c context.Context
+	c = context.Background()
+	h.Shutdown(c)
 }
 
 func TestGenKey(t *testing.T) {

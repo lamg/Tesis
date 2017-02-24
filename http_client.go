@@ -28,7 +28,7 @@ func (p *PortalUser) Auth(c *Credentials) (a bool, e error) {
 	b, e = json.Marshal(c)
 	if e == nil {
 		br := bytes.NewReader(b)
-		u := fmt.Sprintf("https://%s", p.url)
+		u := fmt.Sprintf("https://%s/auth", p.url)
 		r, e := p.client.Post(u, "application/json", br)
 		if e == nil {
 			if r.StatusCode == 200 {

@@ -40,3 +40,31 @@ type Authenticator interface {
 type DBManager interface {
 	UserInfo(string) (*Info, error)
 }
+
+type DummyAuth struct {
+}
+
+func (d *DummyAuth) Authenticate(u, p string) (b bool) {
+	b = u == p
+	return
+}
+
+type DummyManager struct {
+}
+
+func (m *DummyManager) UserInfo(u string) (inf *Info, e error) {
+	inf = &Info{
+		SentMessages: 18,
+		RecvMessages: 40,
+		MailStorage:  67,
+		InternetDwnl: 87,
+		WifiLogons: []WifiL{
+			WifiL{
+				Ip:    "192.168.0.10",
+				Place: "Rectoría",
+				Date:  time.Now(),
+			},
+		},
+	}
+	return
+}
