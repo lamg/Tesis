@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	h "net/http"
 )
@@ -27,17 +28,25 @@ func (p *PortalUser) Auth(c *Credentials) (a bool, e error) {
 	var b []byte
 	b, e = json.Marshal(c)
 	if e == nil {
-		br := bytes.NewReader(b)
-		u := fmt.Sprintf("https://%s/auth", p.url)
-		r, e := p.client.Post(u, "application/json", br)
+		var br io.Reader
+		var r *h.Response
+		var u string
+		br = bytes.NewReader(b)
+		u = fmt.Sprintf("https://%s/auth", p.url)
+		r, e = p.client.Post(u, "application/json", br)
 		if e == nil {
 			if r.StatusCode == 200 {
 				p.tk = r.Header.Get(AuthHd)
+				var bd []byte
+				bd, e = ioutil.ReadAll(r.Body)
+				println(string(bd))
 				//token string stored
 				a = true
 			} else {
 				e = fmt.Errorf("%s", r.Status)
 			}
+		} else {
+
 		}
 	}
 	return

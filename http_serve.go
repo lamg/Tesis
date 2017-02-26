@@ -5,12 +5,13 @@ import (
 	"context"
 	"crypto/rsa"
 	"encoding/json"
-	_ "fmt"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"html/template"
 	"io/ioutil"
 	h "net/http"
+
 	"path"
 	"time"
 )
@@ -38,6 +39,8 @@ const (
 	//HTTPS server key files
 	cert = "cert.pem"
 	key  = "key.pem"
+	//paths
+	authP = "/auth"
 )
 
 // Creates a new instance of HTTPPortal and starts serving.
@@ -57,13 +60,17 @@ func NewHTTPPortal(u string, a Authenticator, q DBManager) (p *HTTPPortal, e err
 			var r []Route
 			var hr *mux.Router
 			r = []Route{
-				Route{"Root", "GET", "/", rootH},
-				Route{"Static content", "GET", "/st/{file}", stH},
-				Route{"Auth", "POST", "/auth",
+				Route{"Root", "GET", "/",
+					func(w h.ResponseWriter, r *h.Request) {
+						rootH(w, r, &pk.PublicKey)
+					},
+				},
+				Route{"Auth", "POST", authP,
 					func(w h.ResponseWriter, r *h.Request) {
 						authH(w, r, pk, a)
 					},
 				},
+				Route{"Static content", "GET", "/st/{file}", stH},
 				Route{"Info", "GET", "/info",
 					func(w h.ResponseWriter, r *h.Request) {
 						infoH(w, r, &pk.PublicKey, q)
@@ -99,21 +106,30 @@ func (p *HTTPPortal) Shutdown(c context.Context) {
 	p.srv.Shutdown(c)
 }
 
-func rootH(w h.ResponseWriter, r *h.Request) {
-	var t *template.Template
+func rootH(w h.ResponseWriter, r *h.Request, p *rsa.PublicKey) {
+	var t *jwt.Token
 	var e error
-	// { exists file index in cwd }
-	t, e = template.ParseFiles(index)
-	if e == nil {
-		t.Execute(w, &struct {
-			Msg string
-		}{
-			Msg: "Hola",
-		})
+	t, e = parseToken(r, p)
+	if e == nil && t.Valid {
+		//user is already authenticated
+		//dashboard page presented
 	} else {
-		var m []byte
-		m = []byte("Error loading index.html")
-		w.Write(m)
+		//user is not authenticathed
+		var t *template.Template
+		// { exists file index in cwd }
+		t, e = template.ParseFiles(index)
+		if e == nil {
+			t.Execute(w, &struct {
+				Msg string
+			}{
+				Msg: "Hola",
+			})
+		} else {
+			var m []byte
+			m = []byte("Error loading index.html")
+			w.Write(m)
+		}
+		//login page presented
 	}
 }
 
@@ -133,42 +149,43 @@ func stH(w h.ResponseWriter, r *h.Request) {
 }
 
 func authH(w h.ResponseWriter, r *h.Request, p *rsa.PrivateKey, a Authenticator) {
-	var (
-		c *Credentials
-		d *json.Decoder
-		e error
-	)
-	c, d = new(Credentials), json.NewDecoder(r.Body)
-	if e = d.Decode(c); e == nil {
-		var m []byte
-		var r bool
+	var c *Credentials
+	var e error
+	var m, bd []byte
+	var ok = []byte("OK")
+	var err = []byte("¡Error!")
 
-		r = a.Authenticate(c.User, c.Pass)
-		if r {
+	c = new(Credentials)
+	bd, _ = ioutil.ReadAll(r.Body)
+	//println(string(bd))
+	if e = json.Unmarshal(bd, c); e == nil {
+		var v bool
+		v = a.Authenticate(c.User, c.Pass)
+		if v {
 			//user is authenticated
-			var (
-				u  *User
-				t  *jwt.Token
-				js string
-			)
+			var u *User
+			var t *jwt.Token
+			var js string
 
 			u = &User{UserName: c.User}
 			t = jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), u)
 			js, e = t.SignedString(p)
 			if e == nil {
 				w.Header().Set(AuthHd, js)
-				m = []byte("OK")
+				m = ok
 				//the header contains authentication token
 			} else {
-				m = []byte("Error")
-				w.WriteHeader(401)
+				m = err
 			}
 		} else {
-			m = []byte("¡Error!")
-			w.WriteHeader(401) //401 is HTTP auth failed code
+			//user authentication failed
+			m = err
 		}
-		w.Write(m)
+	} else {
+		m = []byte(e.Error())
 	}
+	w.Write(m)
+	//r.Body.Close()
 }
 
 func infoH(w h.ResponseWriter, r *h.Request, p *rsa.PublicKey, q DBManager) {
