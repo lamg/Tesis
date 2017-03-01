@@ -32,7 +32,7 @@ func (p *PortalUser) Auth(c *Credentials) (a bool, e error) {
 		var r *h.Response
 		var u string
 		br = bytes.NewReader(b)
-		u = fmt.Sprintf("https://%s/auth", p.url)
+		u = fmt.Sprintf("https://%s%s", p.url, authP)
 		r, e = p.client.Post(u, "application/json", br)
 		if e == nil {
 			if r.StatusCode == 200 {
@@ -56,7 +56,7 @@ func (p *PortalUser) Info() (inf *Info, e error) {
 	var u string
 	var q *h.Request
 
-	u = fmt.Sprintf("https://%s/%s", p.url, "info")
+	u = fmt.Sprintf("https://%s%s", p.url, infoP)
 	q, e = h.NewRequest("GET", u, nil)
 	if e == nil {
 		var rp *h.Response

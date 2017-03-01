@@ -4,6 +4,7 @@ package tesis
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/tls"
 	"encoding/json"
 
 	"github.com/dgrijalva/jwt-go"
@@ -11,7 +12,6 @@ import (
 	"html/template"
 	"io/ioutil"
 	h "net/http"
-
 	"path"
 	"time"
 )
@@ -34,13 +34,18 @@ type HTTPPortal struct {
 
 const (
 	//Content files
-	index  = "index.html"
-	jquery = "st/jquery.js"
+	index  = "index"
+	jquery = "jquery.js"
 	//HTTPS server key files
 	cert = "cert.pem"
 	key  = "key.pem"
 	//paths
-	authP = "/auth"
+	authP = "/a/auth"
+	infoP = "/a/info"
+)
+
+var (
+	notFound = []byte("404 File not found")
 )
 
 // Creates a new instance of HTTPPortal and starts serving.
@@ -49,7 +54,10 @@ const (
 //  q: Database manager interface
 // The directory where the program is executed must have
 // the following structure:
-//  (. index.html cert.pem key.pem (st jquery.js))
+//  (. cert.pem key.pem
+//    (st index.html index.js
+//        dash.html dash.js
+//        jquery.js))
 func NewHTTPPortal(u string, a Authenticator, q DBManager) (p *HTTPPortal, e error) {
 	var bs []byte
 	bs, e = ioutil.ReadFile(key)
@@ -60,18 +68,15 @@ func NewHTTPPortal(u string, a Authenticator, q DBManager) (p *HTTPPortal, e err
 			var r []Route
 			var hr *mux.Router
 			r = []Route{
-				Route{"Root", "GET", "/",
-					func(w h.ResponseWriter, r *h.Request) {
-						rootH(w, r, &pk.PublicKey)
-					},
-				},
+				Route{"Root", "GET", "/", pagesH},
+				Route{"RootFiles", "GET", "/{file}", pagesH},
+				Route{"Scripts", "GET", "/s/{file}", scriptH},
 				Route{"Auth", "POST", authP,
 					func(w h.ResponseWriter, r *h.Request) {
 						authH(w, r, pk, a)
 					},
 				},
-				Route{"Static content", "GET", "/st/{file}", stH},
-				Route{"Info", "GET", "/info",
+				Route{"Info", "GET", infoP,
 					func(w h.ResponseWriter, r *h.Request) {
 						infoH(w, r, &pk.PublicKey, q)
 					},
@@ -91,6 +96,7 @@ func NewHTTPPortal(u string, a Authenticator, q DBManager) (p *HTTPPortal, e err
 				ReadTimeout:    10 * time.Second,
 				WriteTimeout:   10 * time.Second,
 				MaxHeaderBytes: 1 << 20,
+				TLSNextProto:   map[string]func(*h.Server, *tls.Conn, h.Handler){}, //deactivate HTTP/2
 			}
 		}
 	}
@@ -106,45 +112,50 @@ func (p *HTTPPortal) Shutdown(c context.Context) {
 	p.srv.Shutdown(c)
 }
 
-func rootH(w h.ResponseWriter, r *h.Request, p *rsa.PublicKey) {
-	var t *jwt.Token
-	var e error
-	t, e = parseToken(r, p)
-	if e == nil && t.Valid {
-		//user is already authenticated
-		//dashboard page presented
-	} else {
-		//user is not authenticathed
-		var t *template.Template
-		// { exists file index in cwd }
-		t, e = template.ParseFiles(index)
-		if e == nil {
-			t.Execute(w, &struct {
-				Msg string
-			}{
-				Msg: "Hola",
-			})
-		} else {
-			var m []byte
-			m = []byte("Error loading index.html")
-			w.Write(m)
-		}
-		//login page presented
+// Handler of "/" path
+func pagesH(w h.ResponseWriter, r *h.Request) {
+	var file string
+	file = mux.Vars(r)["file"]
+	if file == "" {
+		file = index
 	}
+	file = file + ".html"
+	file = path.Join("st", file)
+
+	// { exists file ~file~ in cwd }
+	serveHTML(w, file)
 }
 
-func stH(w h.ResponseWriter, r *h.Request) {
+// Handler of "/s" path
+func scriptH(w h.ResponseWriter, r *h.Request) {
+	//TODO doesn't load jquery.js
 	var file string
-	var bs []byte
-	var e error
 	file = mux.Vars(r)["file"]
-	// { exists file ~file~ in cwd }
-	bs, e = ioutil.ReadFile(path.Join("st", file))
+	file = path.Join("st", file)
+	serveFile(w, file)
+}
+
+func serveFile(w h.ResponseWriter, file string) {
+	var e error
+	var bs []byte
+	bs, e = ioutil.ReadFile(file)
 	if e == nil {
 		w.Write(bs)
 	} else {
 		w.WriteHeader(404)
-		w.Write([]byte("404 File not found"))
+		w.Write(notFound)
+	}
+}
+
+func serveHTML(w h.ResponseWriter, file string) {
+	var e error
+	var tm *template.Template
+	tm, e = template.ParseFiles(file)
+	if e == nil {
+		tm.Execute(w, nil)
+	} else {
+		w.WriteHeader(404)
+		w.Write(notFound)
 	}
 }
 
