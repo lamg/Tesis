@@ -1,51 +1,35 @@
-// Web portal for University of Pinar del Río
+// Web interface for synchronizing UPR users databases
 package tesis
 
 import (
-	"context"
 	"crypto/rsa"
-	"crypto/tls"
-	"encoding/json"
-
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gorilla/mux"
 	"html/template"
 	"io/ioutil"
 	h "net/http"
 	"path"
-	"time"
 )
 
 const AuthHd = "Auth"
 
-type Route struct {
-	Name        string
-	Method      string
-	Pattern     string
-	HandlerFunc h.HandlerFunc
-}
-
-type HTTPPortal struct {
-	url    string
-	routes []Route
-	pkey   *rsa.PrivateKey
-	srv    *h.Server
-}
-
 const (
 	//Content files
-	index  = "index"
+	index  = "index.html"
 	jquery = "jquery.js"
+	info   = "info.html"
 	//HTTPS server key files
 	cert = "cert.pem"
 	key  = "key.pem"
 	//paths
-	authP = "/a/auth"
-	infoP = "/a/info"
+	infoP = "/info"
+	syncP = "/sync"
 )
 
 var (
 	notFound = []byte("404 File not found")
+	pkey     *rsa.PrivateKey
+	auth     Authenticator
+	db       DBManager
 )
 
 // Creates a new instance of HTTPPortal and starts serving.
@@ -58,186 +42,162 @@ var (
 //    (st index.html index.js
 //        dash.html dash.js
 //        jquery.js))
-func NewHTTPPortal(u string, a Authenticator, q DBManager) (p *HTTPPortal, e error) {
+func ListenAndServe(u string, a Authenticator, d DBManager) {
 	var bs []byte
+	var e error
+	auth, db = a, d
+	// { auth,db:initialized }
 	bs, e = ioutil.ReadFile(key)
+	// { loaded.key.bs ≡ e = nil}
 	if e == nil {
-		var pk *rsa.PrivateKey
-		pk, e = jwt.ParseRSAPrivateKeyFromPEM(bs)
+		// { loaded.key.bs }
+		pkey, e = jwt.ParseRSAPrivateKeyFromPEM(bs)
+		// { parsed.pkey ≡ e = nil }
 		if e == nil {
-			var r []Route
-			var hr *mux.Router
-			r = []Route{
-				Route{"Root", "GET", "/", pagesH},
-				Route{"RootFiles", "GET", "/{file}", pagesH},
-				Route{"Scripts", "GET", "/s/{file}", scriptH},
-				Route{"Auth", "POST", authP,
-					func(w h.ResponseWriter, r *h.Request) {
-						authH(w, r, pk, a)
-					},
-				},
-				Route{"Info", "GET", infoP,
-					func(w h.ResponseWriter, r *h.Request) {
-						infoH(w, r, &pk.PublicKey, q)
-					},
-				},
-			}
-			hr = mux.NewRouter()
-			for _, i := range r {
-				hr.Methods(i.Method).
-					Path(i.Pattern).
-					Name(i.Name).
-					Handler(i.HandlerFunc)
-			}
-			p = &HTTPPortal{url: u, routes: r, pkey: pk}
-			p.srv = &h.Server{
-				Addr:           u,
-				Handler:        hr,
-				ReadTimeout:    10 * time.Second,
-				WriteTimeout:   10 * time.Second,
-				MaxHeaderBytes: 1 << 20,
-				TLSNextProto:   map[string]func(*h.Server, *tls.Conn, h.Handler){}, //deactivate HTTP/2
-			}
+			h.HandleFunc("/", indexH)
+			h.HandleFunc("/s/", staticH)
+			h.HandleFunc(infoP, infoH)
+			h.HandleFunc(syncP, syncH)
+			h.HandleFunc("/favicon.ico", h.NotFoundHandler().ServeHTTP)
+			h.ListenAndServeTLS(u, cert, key, nil)
+			// { serving tesis }
 		}
+		// { serving tesis ≡ e = nil }
 	}
 	return
-}
-
-func (p *HTTPPortal) Serve() (e error) {
-	e = p.srv.ListenAndServeTLS(cert, key)
-	return
-}
-
-func (p *HTTPPortal) Shutdown(c context.Context) {
-	p.srv.Shutdown(c)
 }
 
 // Handler of "/" path
-func pagesH(w h.ResponseWriter, r *h.Request) {
-	var file string
-	file = mux.Vars(r)["file"]
-	if file == "" {
-		file = index
+func indexH(w h.ResponseWriter, r *h.Request) {
+	if r.Method == h.MethodGet {
+		serveHTML(w, index, nil)
 	}
-	file = file + ".html"
-	file = path.Join("st", file)
-
-	// { exists file ~file~ in cwd }
-	serveHTML(w, file)
 }
 
 // Handler of "/s" path
-func scriptH(w h.ResponseWriter, r *h.Request) {
-	//TODO doesn't load jquery.js
+func staticH(w h.ResponseWriter, r *h.Request) {
 	var file string
-	file = mux.Vars(r)["file"]
+	file = path.Base(r.URL.Path)
 	file = path.Join("st", file)
-	serveFile(w, file)
+	h.ServeFile(w, r, file)
 }
 
-func serveFile(w h.ResponseWriter, file string) {
-	var e error
-	var bs []byte
-	bs, e = ioutil.ReadFile(file)
-	if e == nil {
-		w.Write(bs)
-	} else {
-		w.WriteHeader(404)
-		w.Write(notFound)
-	}
-}
-
-func serveHTML(w h.ResponseWriter, file string) {
+// exists.p ≡ ⟨∃ i: i ∈ `ls`: i = p⟩
+func serveHTML(w h.ResponseWriter, file string, d interface{}) {
 	var e error
 	var tm *template.Template
-	tm, e = template.ParseFiles(file)
+	var p string
+	p = path.Join("st", file)
+	tm, e = template.ParseFiles(p)
+	// { e = nil ≡ exists.p ∧ parsed.tm }
 	if e == nil {
-		tm.Execute(w, nil)
+		//TODO learn templates
+		tm.Execute(w, d)
 	} else {
 		w.WriteHeader(404)
-		w.Write(notFound)
+		w.Write([]byte(e.Error()))
 	}
 }
 
-func authH(w h.ResponseWriter, r *h.Request, p *rsa.PrivateKey, a Authenticator) {
-	var c *Credentials
+func infoH(w h.ResponseWriter, r *h.Request) {
+	// { r.Method ∈ h.Method* }
+	if r.Method == h.MethodPost {
+		infoPost(w, r)
+	} else if r.Method == h.MethodGet {
+		infoGet(w, r)
+	}
+}
+
+func infoPost(w h.ResponseWriter, r *h.Request) {
+	//globals
+	// pkey: *rsa.PrivateKey
+	// auth: Authenticator
+	//end
 	var e error
-	var m, bd []byte
-	var ok = []byte("OK")
-	var err = []byte("¡Error!")
+	var user, pass string
+	var v bool
 
-	c = new(Credentials)
-	bd, _ = ioutil.ReadAll(r.Body)
-	//println(string(bd))
-	if e = json.Unmarshal(bd, c); e == nil {
-		var v bool
-		v = a.Authenticate(c.User, c.Pass)
-		if v {
-			//user is authenticated
-			var u *User
-			var t *jwt.Token
-			var js string
+	user, pass = r.FormValue("user"), r.FormValue("pass")
+	v = auth.Authenticate(user, pass)
+	if v {
+		//user is authenticated
+		var u *User
+		var t *jwt.Token
+		var js string
+		u = &User{UserName: user}
+		t = jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), u)
+		js, e = t.SignedString(pkey)
 
-			u = &User{UserName: c.User}
-			t = jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), u)
-			js, e = t.SignedString(p)
-			if e == nil {
-				w.Header().Set(AuthHd, js)
-				m = ok
-				//the header contains authentication token
-			} else {
-				m = err
-			}
-		} else {
-			//user authentication failed
-			m = err
+		if e == nil {
+			var ck *h.Cookie
+			ck = &h.Cookie{Name: AuthHd, Value: js}
+			h.SetCookie(w, ck)
+			//cookie contains authentication token
+			writeInfo(w, user)
+			// { written.userInfo ≢ error }
 		}
 	} else {
-		m = []byte(e.Error())
+		//TODO delete, handle cookie
+		h.SetCookie(w, &h.Cookie{Name: AuthHd, Value: ""})
 	}
-	w.Write(m)
+	if e != nil {
+		w.Write([]byte(e.Error()))
+	}
 	//r.Body.Close()
 }
 
-func infoH(w h.ResponseWriter, r *h.Request, p *rsa.PublicKey, q DBManager) {
+func infoGet(w h.ResponseWriter, r *h.Request) {
+	//globals
+	//p: *rsa.PublicKey
+	//q: DBManager
+	//end
 	var t *jwt.Token
 	var e error
-	t, e = parseToken(r, p)
+	t, e = parseToken(r, &pkey.PublicKey)
 	if e == nil && t.Valid {
-		var (
-			inf *Info
-			b   []byte
-			clm jwt.MapClaims
-			us  string
-		)
+		var clm jwt.MapClaims
+		var us string
+
 		// { t.Claims is a jwt.MapClaims }
 		clm = t.Claims.(jwt.MapClaims)
 		us = clm["user"].(string)
-		inf, e = q.UserInfo(us)
-		if e == nil {
-			b, e = json.Marshal(inf)
-			if e == nil {
-				w.Write(b)
-			} else {
-				w.Write([]byte("Marshal failed"))
-				w.WriteHeader(500)
-			}
-		} else {
-			w.Write([]byte("DB query failed"))
-			w.WriteHeader(500)
-		}
+		writeInfo(w, us)
 	} else {
 		w.WriteHeader(401)
 	}
 }
 
+func writeInfo(w h.ResponseWriter, user string) {
+	var inf *Info
+	var e error
+	inf, e = db.UserInfo(user)
+	// { loaded.inf ≡ e = nil }
+	if e == nil {
+		// { loaded.inf }
+		serveHTML(w, info, inf)
+	} else {
+		// { ¬loaded.inf }
+		w.Write([]byte(e.Error()))
+		w.WriteHeader(500)
+	}
+	// { written.inf ≢ written.(e.Error()) ≡ e ≠ nil }
+}
+
 func parseToken(r *h.Request, p *rsa.PublicKey) (t *jwt.Token, e error) {
-	var js string
-	js = r.Header.Get(AuthHd)
-	t, e = jwt.Parse(js,
+	var ck *h.Cookie
+	ck, e = r.Cookie(AuthHd)
+	t, e = jwt.Parse(ck.Value,
 		func(x *jwt.Token) (a interface{}, d error) {
 			a, d = p, nil
 			return
 		})
 	return
+}
+
+func syncH(w h.ResponseWriter, r *h.Request) {
+	// { r.Method ∈ h.Method* }
+	if r.Method == h.MethodPost {
+		// { sync Info parsed }
+		// { sync Info processed }
+	}
 }

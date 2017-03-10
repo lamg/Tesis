@@ -1,18 +1,18 @@
 package tesis
 
 import (
-	"bytes"
 	"crypto/tls"
-	"encoding/json"
+
 	"fmt"
-	"io"
+
 	"io/ioutil"
 	h "net/http"
 )
 
 type PortalUser struct {
-	client  *h.Client
-	url, tk string
+	client *h.Client
+	url    string
+	ck     *h.Cookie
 }
 
 func NewPortalUser(url string) (p *PortalUser) {
@@ -25,52 +25,53 @@ func NewPortalUser(url string) (p *PortalUser) {
 
 func (p *PortalUser) Auth(c *Credentials) (a bool, e error) {
 	a = false
-	var b []byte
-	b, e = json.Marshal(c)
+	var r *h.Response
+	var u string
+	u = fmt.Sprintf("https://%s%s", p.url, infoP)
+	r, e = p.client.PostForm(u,
+		map[string][]string{
+			"user": []string{c.User},
+			"pass": []string{c.Pass},
+		})
 	if e == nil {
-		var br io.Reader
-		var r *h.Response
-		var u string
-		br = bytes.NewReader(b)
-		u = fmt.Sprintf("https://%s%s", p.url, authP)
-		r, e = p.client.Post(u, "application/json", br)
-		if e == nil {
-			if r.StatusCode == 200 {
-				p.tk = r.Header.Get(AuthHd)
-				var bd []byte
-				bd, e = ioutil.ReadAll(r.Body)
-				println(string(bd))
+		if r.StatusCode == 200 {
+			var cs []*h.Cookie
+			cs = r.Cookies()
+			if len(cs) == 1 {
+				p.ck = cs[0]
 				//token string stored
 				a = true
 			} else {
-				e = fmt.Errorf("%s", r.Status)
+				e = fmt.Errorf("Cantidad de cookies (%d) incorrecta", len(cs))
 			}
 		} else {
-
+			e = fmt.Errorf("%s", r.Status)
 		}
 	}
 	return
 }
 
-func (p *PortalUser) Info() (inf *Info, e error) {
+func (p *PortalUser) Info() (s string, e error) {
 	var u string
 	var q *h.Request
-
-	u = fmt.Sprintf("https://%s%s", p.url, infoP)
-	q, e = h.NewRequest("GET", u, nil)
+	if p.ck == nil {
+		e = fmt.Errorf("Auth failed")
+	}
 	if e == nil {
+		u = fmt.Sprintf("https://%s%s", p.url, infoP)
+		q, e = h.NewRequest("GET", u, nil)
+	}
+	if e == nil {
+		q.AddCookie(p.ck)
 		var rp *h.Response
-		q.Header = map[string][]string{
-			AuthHd: {p.tk},
-		}
 		//create a request with appropiate header
 		rp, e = p.client.Do(q)
 		if e == nil && rp.StatusCode == 200 {
-			var d *json.Decoder
-			inf = new(Info)
-			d = json.NewDecoder(rp.Body)
-			e = d.Decode(inf)
-			rp.Body.Close()
+			var b []byte
+			b, e = ioutil.ReadAll(rp.Body)
+			if e == nil {
+				s = string(b)
+			}
 		}
 	}
 	return

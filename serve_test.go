@@ -1,10 +1,10 @@
 package tesis
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	a "github.com/stretchr/testify/assert"
+
 	"os"
 	"testing"
 	"time"
@@ -12,16 +12,13 @@ import (
 
 func TestHTTPPortal(t *testing.T) {
 	var e error
-	var h *HTTPPortal
 	os.Chdir("serv")
 	// { files referenced in http_serve.go exist
 	// in cwd }
 	hp := "localhost:10443"
 	au := &DummyAuth{}
 	qr := &DummyManager{}
-	h, e = NewHTTPPortal(hp, au, qr)
-	a.NoError(t, e, "Error creating server")
-	go h.Serve()
+	go ListenAndServe(hp, au, qr)
 	time.Sleep(1 * time.Second)
 
 	var j bool
@@ -34,10 +31,10 @@ func TestHTTPPortal(t *testing.T) {
 	if a.NotNil(t, j) {
 		t.Logf("Valid: %t", j)
 	}
-	var inf *Info
+	var inf string
 	inf, e = cl.Info()
 	if a.NoError(t, e) {
-		t.Logf("%v", inf)
+		t.Log(inf)
 	}
 
 	var s string
@@ -45,10 +42,6 @@ func TestHTTPPortal(t *testing.T) {
 	if a.NoError(t, e) {
 		t.Log(s)
 	}
-
-	var c context.Context
-	c = context.Background()
-	h.Shutdown(c)
 }
 
 func TestGenKey(t *testing.T) {

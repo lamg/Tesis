@@ -2,25 +2,10 @@ package tesis
 
 import (
 	"github.com/dgrijalva/jwt-go"
-	"time"
 )
 
-//cuantos correos has mandado y recibido
-//cuantos megas has consumido de tu cuenta
-//de correo y de internet
-
 type Info struct {
-	SentMessages int `json: "sentMessages"`
-	RecvMessages int
-	MailStorage  int
-	InternetDwnl int
-	WifiLogons   []WifiL
-}
-
-type WifiL struct {
-	Ip    string
-	Place string
-	Date  time.Time
+	name string
 }
 
 type Credentials struct {
@@ -38,6 +23,9 @@ type Authenticator interface {
 }
 
 type DBManager interface {
+	//todos los usuarios reciben la misma informacion
+	//del estado del sistema?
+	//bitacora de cambios hechos por el usuario
 	UserInfo(string) (*Info, error)
 }
 
@@ -53,18 +41,6 @@ type DummyManager struct {
 }
 
 func (m *DummyManager) UserInfo(u string) (inf *Info, e error) {
-	inf = &Info{
-		SentMessages: 18,
-		RecvMessages: 40,
-		MailStorage:  67,
-		InternetDwnl: 87,
-		WifiLogons: []WifiL{
-			WifiL{
-				Ip:    "192.168.0.10",
-				Place: "Rectoría",
-				Date:  time.Now(),
-			},
-		},
-	}
+	inf = &Info{name: u}
 	return
 }

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 	<head>
+		<meta charset="UTF-8">
 		<title>Autenticación</title>
 		<script src="/s/jquery.js" type="text/javascript">
 		</script>
@@ -12,10 +13,11 @@
 			<p id="resp">Ingrese sus credenciales</p>
 		</div>
 		<div>
-			<form id="authForm">
+			<!-- TODO form submit -->
+			<form id="authForm" method="post" action="/info">
 				<input id="user" type="text">
-				<input id="password" type="password">
-				<input id="login" type="button" value="Entrar">
+				<input id="pass" type="password">
+				<input type="submit">
 			</form>
 		</div>
 	</body>
