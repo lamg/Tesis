@@ -10,23 +10,24 @@ import (
 	"path"
 )
 
-const AuthHd = "Auth"
+const AuthHd = "auth"
 
 const (
 	//Content files
 	index  = "index.html"
 	jquery = "jquery.js"
-	info   = "info.html"
+	dash   = "dash.html"
 	//HTTPS server key files
 	cert = "cert.pem"
 	key  = "key.pem"
 	//paths
-	infoP = "/info"
+	dashP = "/dash"
 	syncP = "/sync"
 )
 
 var (
-	notFound = []byte("404 File not found")
+	notFound = []byte("Archivo no encontrado")
+	notAuth  = []byte("No autenticado")
 	pkey     *rsa.PrivateKey
 	auth     Authenticator
 	db       DBManager
@@ -41,14 +42,14 @@ var (
 //  (. cert.pem key.pem
 //    (st index.html index.js
 //        dash.html dash.js
-//        jquery.js))
+//        jquery.js util.js))
 func ListenAndServe(u string, a Authenticator, d DBManager) {
 	var bs []byte
 	var e error
 	auth, db = a, d
 	// { auth,db:initialized }
 	bs, e = ioutil.ReadFile(key)
-	// { loaded.key.bs ≡ e = nil}
+	// { loaded.key.bs ≡ e = nil }
 	if e == nil {
 		// { loaded.key.bs }
 		pkey, e = jwt.ParseRSAPrivateKeyFromPEM(bs)
@@ -56,7 +57,7 @@ func ListenAndServe(u string, a Authenticator, d DBManager) {
 		if e == nil {
 			h.HandleFunc("/", indexH)
 			h.HandleFunc("/s/", staticH)
-			h.HandleFunc(infoP, infoH)
+			h.HandleFunc(dashP, dashH)
 			h.HandleFunc(syncP, syncH)
 			h.HandleFunc("/favicon.ico", h.NotFoundHandler().ServeHTTP)
 			h.ListenAndServeTLS(u, cert, key, nil)
@@ -99,19 +100,23 @@ func serveHTML(w h.ResponseWriter, file string, d interface{}) {
 	}
 }
 
-func infoH(w h.ResponseWriter, r *h.Request) {
+func dashH(w h.ResponseWriter, r *h.Request) {
 	// { r.Method ∈ h.Method* }
 	if r.Method == h.MethodPost {
-		infoPost(w, r)
+		dashPost(w, r)
+		// { written.UserName ∧ written.Cookie ≡ e = nil ∧ v
+		//   ≢ written.(e.Error()) }
 	} else if r.Method == h.MethodGet {
-		infoGet(w, r)
+		dashGet(w, r)
+		//
 	}
 }
 
-func infoPost(w h.ResponseWriter, r *h.Request) {
+func dashPost(w h.ResponseWriter, r *h.Request) {
 	//globals
-	// pkey: *rsa.PrivateKey
-	// auth: Authenticator
+	// pkey: *rsa.PrivateKey,?
+	// auth: Authenticator,?
+	// AuthHd: string,?
 	//end
 	var e error
 	var user, pass string
@@ -119,41 +124,39 @@ func infoPost(w h.ResponseWriter, r *h.Request) {
 
 	user, pass = r.FormValue("user"), r.FormValue("pass")
 	v = auth.Authenticate(user, pass)
+	// { v ≡ registered.user }
 	if v {
-		//user is authenticated
 		var u *User
 		var t *jwt.Token
 		var js string
 		u = &User{UserName: user}
 		t = jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), u)
 		js, e = t.SignedString(pkey)
-
+		// { signedString.js ≡ e = nil }
 		if e == nil {
 			var ck *h.Cookie
 			ck = &h.Cookie{Name: AuthHd, Value: js}
 			h.SetCookie(w, ck)
-			//cookie contains authentication token
-			writeInfo(w, user)
-			// { written.userInfo ≢ error }
+			writeInfo(w, u.UserName)
+			// { written.(u.UserName) ∧ written.ck }
 		}
-	} else {
-		//TODO delete, handle cookie
-		h.SetCookie(w, &h.Cookie{Name: AuthHd, Value: ""})
 	}
+
 	if e != nil {
 		w.Write([]byte(e.Error()))
 	}
-	//r.Body.Close()
+	// { written.(u.UserName) ∧ written.ck ≡ e = nil ∧ v
+	//   ≢ written.(e.Error()) }
 }
 
-func infoGet(w h.ResponseWriter, r *h.Request) {
+func dashGet(w h.ResponseWriter, r *h.Request) {
 	//globals
-	//p: *rsa.PublicKey
-	//q: DBManager
+	//p: *rsa.PublicKey,?
 	//end
 	var t *jwt.Token
 	var e error
 	t, e = parseToken(r, &pkey.PublicKey)
+	// { e = nil ∧ t.Valid ≡ auth.(user.t) }
 	if e == nil && t.Valid {
 		var clm jwt.MapClaims
 		var us string
@@ -162,23 +165,32 @@ func infoGet(w h.ResponseWriter, r *h.Request) {
 		clm = t.Claims.(jwt.MapClaims)
 		us = clm["user"].(string)
 		writeInfo(w, us)
+		// { writtenInfo.us }
 	} else {
+		// { e ≠ nil ∨ ¬t.Valid}
+		w.Write(notAuth)
 		w.WriteHeader(401)
 	}
+	// { (writtenInfo.us ≢ written.notAuth }
 }
 
 func writeInfo(w h.ResponseWriter, user string) {
+	// globals
+	// db: DBManager,?
+	// end
 	var inf *Info
 	var e error
 	inf, e = db.UserInfo(user)
 	// { loaded.inf ≡ e = nil }
 	if e == nil {
 		// { loaded.inf }
-		serveHTML(w, info, inf)
+		serveHTML(w, dash, inf)
+		// { written.inf }
 	} else {
 		// { ¬loaded.inf }
 		w.Write([]byte(e.Error()))
 		w.WriteHeader(500)
+		// { written.(e.Error()) }
 	}
 	// { written.inf ≢ written.(e.Error()) ≡ e ≠ nil }
 }
@@ -186,11 +198,15 @@ func writeInfo(w h.ResponseWriter, user string) {
 func parseToken(r *h.Request, p *rsa.PublicKey) (t *jwt.Token, e error) {
 	var ck *h.Cookie
 	ck, e = r.Cookie(AuthHd)
-	t, e = jwt.Parse(ck.Value,
-		func(x *jwt.Token) (a interface{}, d error) {
-			a, d = p, nil
-			return
-		})
+	// { readCookie.ck ≡ e = nil }
+	if e == nil {
+		t, e = jwt.Parse(ck.Value,
+			func(x *jwt.Token) (a interface{}, d error) {
+				a, d = p, nil
+				return
+			})
+	}
+	// { parsedToken.t ≡ e = nil }
 	return
 }
 

@@ -5,7 +5,7 @@ import (
 )
 
 type Info struct {
-	name string
+	Name string
 }
 
 type Credentials struct {
@@ -41,6 +41,20 @@ type DummyManager struct {
 }
 
 func (m *DummyManager) UserInfo(u string) (inf *Info, e error) {
-	inf = &Info{name: u}
+	inf = &Info{Name: u}
 	return
+}
+
+type AccId string   //account id
+type SStatus string //synchronization status
+
+type Synchronizer interface {
+	//synchronize a list of accounts
+	Synchronize([]AccId) error
+
+	//get the candidates for synchronization
+	Candidates() ([]AccId, error)
+
+	//report synchronization status of account
+	Report(AccId) (SStatus, error)
 }

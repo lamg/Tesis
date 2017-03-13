@@ -1,10 +1,8 @@
-var jwt = sessionStorage['Auth'];
-if (jwt !== undefined) {
-		setDash(jwt);
-}
-
-function setDash(jwt) {
-		//TODO redirect to dash
-		window.location.replace('/dash');
-		console.log(jwt);
-}
+$(function () {
+		var jwt = getJWT();
+		// { cookieHas.'auth' ≡ jwt ≠ '' ∧ jwt ≠ undefined }
+		if (jwt !== '' && jwt !== undefined) {
+				window.location.replace('/dash');
+		}
+		// { cookieHas.'auth' ≡ location = '/dash' }
+});

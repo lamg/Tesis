@@ -11,24 +11,26 @@ import (
 
 type PortalUser struct {
 	client *h.Client
-	url    string
 	ck     *h.Cookie
+	auInf  string
+	index  string
 }
 
 func NewPortalUser(url string) (p *PortalUser) {
 	cfg := &tls.Config{InsecureSkipVerify: true}
 	tr := &h.Transport{TLSClientConfig: cfg}
 	cl := &h.Client{Transport: tr}
-	p = &PortalUser{client: cl, url: url}
+	ai := fmt.Sprintf("https://%s%s", url, dashP)
+	in := fmt.Sprintf("https://%s", url)
+	p = &PortalUser{client: cl, auInf: ai, index: in}
 	return
 }
 
 func (p *PortalUser) Auth(c *Credentials) (a bool, e error) {
 	a = false
 	var r *h.Response
-	var u string
-	u = fmt.Sprintf("https://%s%s", p.url, infoP)
-	r, e = p.client.PostForm(u,
+
+	r, e = p.client.PostForm(p.auInf,
 		map[string][]string{
 			"user": []string{c.User},
 			"pass": []string{c.Pass},
@@ -52,14 +54,12 @@ func (p *PortalUser) Auth(c *Credentials) (a bool, e error) {
 }
 
 func (p *PortalUser) Info() (s string, e error) {
-	var u string
 	var q *h.Request
 	if p.ck == nil {
 		e = fmt.Errorf("Auth failed")
 	}
 	if e == nil {
-		u = fmt.Sprintf("https://%s%s", p.url, infoP)
-		q, e = h.NewRequest("GET", u, nil)
+		q, e = h.NewRequest("GET", p.auInf, nil)
 	}
 	if e == nil {
 		q.AddCookie(p.ck)
@@ -81,7 +81,7 @@ func (p *PortalUser) Index() (s string, e error) {
 	var r *h.Response
 	var b []byte
 
-	r, e = p.client.Get(fmt.Sprintf("https://%s", p.url))
+	r, e = p.client.Get(p.index)
 	if e == nil {
 		b, e = ioutil.ReadAll(r.Body)
 		if e == nil {
