@@ -48,13 +48,46 @@ func (m *DummyManager) UserInfo(u string) (inf *Info, e error) {
 type AccId string   //account id
 type SStatus string //synchronization status
 
+type AccMatch struct {
+	DBId        AccId
+	ADId        string
+	MissingID   string
+	MissingName string
+	SrcDB       string
+}
+
 type Synchronizer interface {
 	//synchronize a list of accounts
-	Synchronize([]AccId) error
+	Synchronize([]AccMatch) error
 
-	//get the candidates for synchronization
-	Candidates() ([]AccId, error)
+	//get the candidates for synchronization (who and why?)
+	Candidates() ([]AccMatch, error)
+}
 
-	//report synchronization status of account
-	Report(AccId) (SStatus, error)
+// isCandidate ≡ ¬hasId ∨ existsSimilar
+// existsSimilar ≡ toLowerEq ∨ unAccentEq
+
+type DummySync struct {
+	synced bool
+}
+
+func NewDummySync() (s *DummySync) {
+	s = &DummySync{synced: false}
+	return
+}
+
+func (s *DummySync) Candidates() (a []AccMatch, e error) {
+	if !s.synced {
+		a = []AccMatch{
+			AccMatch{DBId: "0", ADId: "Coco", MissingID: "8901191122"},
+			AccMatch{DBId: "1", MissingName: "Luis"},
+		}
+	}
+	//iterate DB and filter comparing with AD
+	return
+}
+
+func (s *DummySync) Synchronize(a []AccMatch) (e error) {
+	s.synced = true
+	return
 }

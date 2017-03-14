@@ -1,12 +1,12 @@
 function getJWT() {
 		var arr = document.cookie.split(';');
 		var t = ['',''];
-		// P ≡ isJWT.t[1] ≡ 
-		//   ⟨∃i:0 ≤ i ≤ arr.length:startWith.arr[i].'auth='⟩
+		// P ≡ 0 ≤ i ≤ arr.length ∧ (i = arr.length ∨
+		//   ⟨∃i:0 ≤ i ≤ arr.length:startWith.arr[i].'auth='⟩)
 		for(var i = 0; i != arr.length && t[0] !== 'auth'; i++){
 				t = arr[i].split('=');
 		}
-		// { P ∧ (i = arr.length ∨ isJWT.t[1])}
+		// { P }
 		return t[1];
 }
 

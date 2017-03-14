@@ -3,9 +3,11 @@ package tesis
 
 import (
 	"crypto/rsa"
+	"crypto/tls"
 	"github.com/dgrijalva/jwt-go"
 	"html/template"
 	"io/ioutil"
+	"log"
 	h "net/http"
 	"path"
 )
@@ -14,9 +16,7 @@ const AuthHd = "auth"
 
 const (
 	//Content files
-	index  = "index.html"
 	jquery = "jquery.js"
-	dash   = "dash.html"
 	//HTTPS server key files
 	cert = "cert.pem"
 	key  = "key.pem"
@@ -28,9 +28,13 @@ const (
 var (
 	notFound = []byte("Archivo no encontrado")
 	notAuth  = []byte("No autenticado")
+	tms      *template.Template
+	fTms     = []string{"st/index.html", "st/dash.html"}
 	pkey     *rsa.PrivateKey
 	auth     Authenticator
 	db       DBManager
+	indexTm  *template.Template
+	dashTm   *template.Template
 )
 
 // Creates a new instance of HTTPPortal and starts serving.
@@ -55,15 +59,25 @@ func ListenAndServe(u string, a Authenticator, d DBManager) {
 		pkey, e = jwt.ParseRSAPrivateKeyFromPEM(bs)
 		// { parsed.pkey ≡ e = nil }
 		if e == nil {
-			h.HandleFunc("/", indexH)
-			h.HandleFunc("/s/", staticH)
-			h.HandleFunc(dashP, dashH)
-			h.HandleFunc(syncP, syncH)
-			h.HandleFunc("/favicon.ico", h.NotFoundHandler().ServeHTTP)
-			h.ListenAndServeTLS(u, cert, key, nil)
-			// { serving tesis }
+			h.DefaultClient.Transport = &h.Transport{
+				TLSNextProto: make(map[string]func(authority string, c *tls.Conn) h.RoundTripper),
+			}
+			// HTTP2 disabled
+			e = parseTemplates()
+			if e == nil {
+				h.HandleFunc("/", indexH)
+				h.HandleFunc("/s/", staticH)
+				h.HandleFunc(dashP, dashH)
+				h.HandleFunc(syncP, syncH)
+				h.HandleFunc("/favicon.ico", h.NotFoundHandler().ServeHTTP)
+				h.ListenAndServeTLS(u, cert, key, nil)
+				// { serving tesis }
+			}
 		}
 		// { serving tesis ≡ e = nil }
+	}
+	if e != nil {
+		log.Print(e.Error())
 	}
 	return
 }
@@ -71,7 +85,7 @@ func ListenAndServe(u string, a Authenticator, d DBManager) {
 // Handler of "/" path
 func indexH(w h.ResponseWriter, r *h.Request) {
 	if r.Method == h.MethodGet {
-		serveHTML(w, index, nil)
+		tms.ExecuteTemplate(w, path.Base(fTms[0]), nil)
 	}
 }
 
@@ -84,20 +98,10 @@ func staticH(w h.ResponseWriter, r *h.Request) {
 }
 
 // exists.p ≡ ⟨∃ i: i ∈ `ls`: i = p⟩
-func serveHTML(w h.ResponseWriter, file string, d interface{}) {
-	var e error
-	var tm *template.Template
-	var p string
-	p = path.Join("st", file)
-	tm, e = template.ParseFiles(p)
+func parseTemplates() (e error) {
+	tms, e = template.ParseFiles(fTms...)
 	// { e = nil ≡ exists.p ∧ parsed.tm }
-	if e == nil {
-		//TODO learn templates
-		tm.Execute(w, d)
-	} else {
-		w.WriteHeader(404)
-		w.Write([]byte(e.Error()))
-	}
+	return
 }
 
 func dashH(w h.ResponseWriter, r *h.Request) {
@@ -121,9 +125,11 @@ func dashPost(w h.ResponseWriter, r *h.Request) {
 	var e error
 	var user, pass string
 	var v bool
-
-	user, pass = r.FormValue("user"), r.FormValue("pass")
-	v = auth.Authenticate(user, pass)
+	e, v = r.ParseForm(), false
+	if e == nil {
+		user, pass = r.PostFormValue("user"), r.PostFormValue("pass")
+		v = auth.Authenticate(user, pass)
+	}
 	// { v ≡ registered.user }
 	if v {
 		var u *User
@@ -184,7 +190,7 @@ func writeInfo(w h.ResponseWriter, user string) {
 	// { loaded.inf ≡ e = nil }
 	if e == nil {
 		// { loaded.inf }
-		serveHTML(w, dash, inf)
+		tms.ExecuteTemplate(w, path.Base(fTms[1]), inf)
 		// { written.inf }
 	} else {
 		// { ¬loaded.inf }
