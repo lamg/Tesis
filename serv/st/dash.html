@@ -12,7 +12,11 @@
 	</head>
 	<body>
 		<div>
-			<p>Servicios disponibles {{.Name}}</p>
+			<p>Estado de sincronización {{.Name}}</p>
+			<ul>
+				{{range .Matches}} <li>{{.}}</li>
+				{{else}} <strong>Vacío</strong> {{end}}
+			</ul>
 			<form>
 				<input type="button" value="Cerrar sesión"
 							 onclick="logOut();">

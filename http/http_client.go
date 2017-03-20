@@ -1,8 +1,7 @@
-package tesis
+package http
 
 import (
 	"crypto/tls"
-
 	"fmt"
 
 	"io/ioutil"
@@ -26,14 +25,14 @@ func NewPortalUser(url string) (p *PortalUser) {
 	return
 }
 
-func (p *PortalUser) Auth(c *Credentials) (a bool, e error) {
+func (p *PortalUser) Auth(user, pass string) (a bool, e error) {
 	a = false
 	var r *h.Response
 
 	r, e = p.client.PostForm(p.auInf,
 		map[string][]string{
-			"user": []string{c.User},
-			"pass": []string{c.Pass},
+			"user": []string{user},
+			"pass": []string{pass},
 		})
 	if e == nil {
 		if r.StatusCode == 200 {

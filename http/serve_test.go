@@ -1,10 +1,10 @@
-package tesis
+package http
 
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"github.com/lamg/tesis"
 	a "github.com/stretchr/testify/assert"
-
 	"os"
 	"testing"
 	"time"
@@ -12,21 +12,21 @@ import (
 
 func TestHTTPPortal(t *testing.T) {
 	var e error
-	os.Chdir("serv")
+	os.Chdir("../serv")
 	// { files referenced in http_serve.go exist
 	// in cwd }
 	hp := "localhost:10443"
-	au := &DummyAuth{}
-	qr := &DummyManager{}
+	au := &tesis.DummyAuth{}
+	qr := tesis.NewDummyManager()
 	go ListenAndServe(hp, au, qr)
 	time.Sleep(1 * time.Second)
 
 	var j bool
-	var cr *Credentials
+
 	var cl *PortalUser
-	cr = &Credentials{User: "a", Pass: "a"}
+
 	cl = NewPortalUser(hp)
-	j, e = cl.Auth(cr)
+	j, e = cl.Auth("a", "a")
 	a.NoError(t, e, "Auth failed")
 	if a.NotNil(t, j) {
 		t.Logf("Valid: %t", j)

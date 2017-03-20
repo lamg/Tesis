@@ -1,10 +1,11 @@
 // Web interface for synchronizing UPR users databases
-package tesis
+package http
 
 import (
 	"crypto/rsa"
 	"crypto/tls"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/lamg/tesis"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -12,9 +13,8 @@ import (
 	"path"
 )
 
-const AuthHd = "auth"
-
 const (
+	AuthHd = "auth"
 	//Content files
 	jquery = "jquery.js"
 	//HTTPS server key files
@@ -31,8 +31,8 @@ var (
 	tms      *template.Template
 	fTms     = []string{"st/index.html", "st/dash.html"}
 	pkey     *rsa.PrivateKey
-	auth     Authenticator
-	db       DBManager
+	auth     tesis.Authenticator
+	db       tesis.DBManager
 	indexTm  *template.Template
 	dashTm   *template.Template
 )
@@ -47,9 +47,13 @@ var (
 //    (st index.html index.js
 //        dash.html dash.js
 //        jquery.js util.js))
-func ListenAndServe(u string, a Authenticator, d DBManager) {
+func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager) {
 	var bs []byte
 	var e error
+	h.DefaultClient.Transport = &h.Transport{
+		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) h.RoundTripper),
+	}
+	// { disabled.HTTP2 }
 	auth, db = a, d
 	// { auth,db:initialized }
 	bs, e = ioutil.ReadFile(key)
@@ -57,25 +61,22 @@ func ListenAndServe(u string, a Authenticator, d DBManager) {
 	if e == nil {
 		// { loaded.key.bs }
 		pkey, e = jwt.ParseRSAPrivateKeyFromPEM(bs)
-		// { parsed.pkey ≡ e = nil }
-		if e == nil {
-			h.DefaultClient.Transport = &h.Transport{
-				TLSNextProto: make(map[string]func(authority string, c *tls.Conn) h.RoundTripper),
-			}
-			// HTTP2 disabled
-			e = parseTemplates()
-			if e == nil {
-				h.HandleFunc("/", indexH)
-				h.HandleFunc("/s/", staticH)
-				h.HandleFunc(dashP, dashH)
-				h.HandleFunc(syncP, syncH)
-				h.HandleFunc("/favicon.ico", h.NotFoundHandler().ServeHTTP)
-				h.ListenAndServeTLS(u, cert, key, nil)
-				// { serving tesis }
-			}
-		}
-		// { serving tesis ≡ e = nil }
 	}
+	// { parsed.pkey ≡ e = nil }
+	if e == nil {
+		// exists.p ≡ ∃.`ls`.(=p)
+		tms, e = template.ParseFiles(fTms...)
+		// { ∀.fTms.exists ∧ parsed.tm ≡ e = nil }
+	}
+	if e == nil {
+		h.HandleFunc("/", indexH)
+		h.HandleFunc("/s/", staticH)
+		h.HandleFunc(dashP, dashH)
+		h.HandleFunc(syncP, syncH)
+		h.HandleFunc("/favicon.ico", h.NotFoundHandler().ServeHTTP)
+		h.ListenAndServeTLS(u, cert, key, nil)
+	}
+	// { started.server ≡ e = nil }
 	if e != nil {
 		log.Print(e.Error())
 	}
@@ -97,19 +98,11 @@ func staticH(w h.ResponseWriter, r *h.Request) {
 	h.ServeFile(w, r, file)
 }
 
-// exists.p ≡ ⟨∃ i: i ∈ `ls`: i = p⟩
-func parseTemplates() (e error) {
-	tms, e = template.ParseFiles(fTms...)
-	// { e = nil ≡ exists.p ∧ parsed.tm }
-	return
-}
-
 func dashH(w h.ResponseWriter, r *h.Request) {
 	// { r.Method ∈ h.Method* }
 	if r.Method == h.MethodPost {
 		dashPost(w, r)
-		// { written.UserName ∧ written.Cookie ≡ e = nil ∧ v
-		//   ≢ written.(e.Error()) }
+		// { written.UserName ∧ written.Cookie ≢ writtenError }
 	} else if r.Method == h.MethodGet {
 		dashGet(w, r)
 		//
@@ -132,10 +125,10 @@ func dashPost(w h.ResponseWriter, r *h.Request) {
 	}
 	// { v ≡ registered.user }
 	if v {
-		var u *User
+		var u *tesis.User
 		var t *jwt.Token
 		var js string
-		u = &User{UserName: user}
+		u = &tesis.User{UserName: user}
 		t = jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), u)
 		js, e = t.SignedString(pkey)
 		// { signedString.js ≡ e = nil }
@@ -146,13 +139,13 @@ func dashPost(w h.ResponseWriter, r *h.Request) {
 			writeInfo(w, u.UserName)
 			// { written.(u.UserName) ∧ written.ck }
 		}
+	} else {
+		w.Write(notAuth)
 	}
-
 	if e != nil {
 		w.Write([]byte(e.Error()))
 	}
-	// { written.(u.UserName) ∧ written.ck ≡ e = nil ∧ v
-	//   ≢ written.(e.Error()) }
+	// { written.(u.UserName) ∧ written.ck ≢ written.(e.Error()) }
 }
 
 func dashGet(w h.ResponseWriter, r *h.Request) {
@@ -167,13 +160,13 @@ func dashGet(w h.ResponseWriter, r *h.Request) {
 		var clm jwt.MapClaims
 		var us string
 
-		// { t.Claims is a jwt.MapClaims }
+		// { t.Claims: jwt.MapClaims }
 		clm = t.Claims.(jwt.MapClaims)
 		us = clm["user"].(string)
 		writeInfo(w, us)
 		// { writtenInfo.us }
 	} else {
-		// { e ≠ nil ∨ ¬t.Valid}
+		// { e ≠ nil ∨ ¬t.Valid }
 		w.Write(notAuth)
 		w.WriteHeader(401)
 	}
@@ -183,8 +176,10 @@ func dashGet(w h.ResponseWriter, r *h.Request) {
 func writeInfo(w h.ResponseWriter, user string) {
 	// globals
 	// db: DBManager,?
+	// fTms: []string,?
+	// tms: *template.Template,?
 	// end
-	var inf *Info
+	var inf *tesis.Info
 	var e error
 	inf, e = db.UserInfo(user)
 	// { loaded.inf ≡ e = nil }
@@ -198,7 +193,7 @@ func writeInfo(w h.ResponseWriter, user string) {
 		w.WriteHeader(500)
 		// { written.(e.Error()) }
 	}
-	// { written.inf ≢ written.(e.Error()) ≡ e ≠ nil }
+	// { written.inf ≢ writtenError }
 }
 
 func parseToken(r *h.Request, p *rsa.PublicKey) (t *jwt.Token, e error) {
