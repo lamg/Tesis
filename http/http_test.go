@@ -5,24 +5,24 @@ import (
 	"crypto/rsa"
 	"github.com/lamg/tesis"
 	a "github.com/stretchr/testify/assert"
-	"os"
 	"testing"
 	"time"
 )
 
 func TestHTTPPortal(t *testing.T) {
 	var e error
-	os.Chdir("../serv")
-	// { files referenced in http_serve.go exist
+	var fs *ServFS
+	// { files referenced in fs exist
 	// in cwd }
+	fs = &ServFS{"st", "cert.pem", "key.pem", []string{"st/index.html", "st/dash.html"}}
+	// {fs initialized}
 	hp := "localhost:10443"
 	au := &tesis.DummyAuth{}
 	qr := tesis.NewDummyManager()
-	go ListenAndServe(hp, au, qr)
+	go ListenAndServe(hp, au, qr, fs)
 	time.Sleep(1 * time.Second)
 
 	var j bool
-
 	var cl *PortalUser
 
 	cl = NewPortalUser(hp)

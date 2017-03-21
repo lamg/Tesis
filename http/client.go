@@ -81,11 +81,22 @@ func (p *PortalUser) Index() (s string, e error) {
 	var b []byte
 
 	r, e = p.client.Get(p.index)
+	// { responseGet.(p.index).r ≡ e = nil }
 	if e == nil {
 		b, e = ioutil.ReadAll(r.Body)
-		if e == nil {
-			s = string(b)
-		}
 	}
+	// { read.(r.Body).b ≡ e = nil }
+	if e == nil {
+		s = string(b)
+	}
+	// { s = string.respGetIndex ≡ e = nil }
+	return
+}
+
+func (p *PortalUser) Sync() (e error) {
+	//marshall Info to JSON and send to server
+	//to use syncH handler
+	//var r *h.Response
+	//r, e = p.client.Get(p.index + "/" + syncP)
 	return
 }

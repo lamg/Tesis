@@ -4,6 +4,8 @@ package http
 import (
 	"crypto/rsa"
 	"crypto/tls"
+	"encoding/json"
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/lamg/tesis"
 	"html/template"
@@ -14,12 +16,8 @@ import (
 )
 
 const (
-	AuthHd = "auth"
 	//Content files
-	jquery = "jquery.js"
-	//HTTPS server key files
-	cert = "cert.pem"
-	key  = "key.pem"
+	AuthHd = "auth"
 	//paths
 	dashP = "/dash"
 	syncP = "/sync"
@@ -29,34 +27,34 @@ var (
 	notFound = []byte("Archivo no encontrado")
 	notAuth  = []byte("No autenticado")
 	tms      *template.Template
-	fTms     = []string{"st/index.html", "st/dash.html"}
 	pkey     *rsa.PrivateKey
 	auth     tesis.Authenticator
 	db       tesis.DBManager
 	indexTm  *template.Template
 	dashTm   *template.Template
+	fs       *ServFS
 )
+
+type ServFS struct {
+	JsFiles, Cert, Key string
+	FTms               []string
+}
 
 // Creates a new instance of HTTPPortal and starts serving.
 //  u: URL to serve
 //  a: User authentication interface
 //  q: Database manager interface
-// The directory where the program is executed must have
-// the following structure:
-//  (. cert.pem key.pem
-//    (st index.html index.js
-//        dash.html dash.js
-//        jquery.js util.js))
-func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager) {
+//  f: Files needed to run the server
+func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServFS) {
 	var bs []byte
 	var e error
 	h.DefaultClient.Transport = &h.Transport{
 		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) h.RoundTripper),
 	}
 	// { disabled.HTTP2 }
-	auth, db = a, d
-	// { auth,db:initialized }
-	bs, e = ioutil.ReadFile(key)
+	auth, db, fs = a, d, f
+	// { auth,db,fs:initialized }
+	bs, e = ioutil.ReadFile(fs.Key)
 	// { loaded.key.bs ≡ e = nil }
 	if e == nil {
 		// { loaded.key.bs }
@@ -65,7 +63,7 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager) {
 	// { parsed.pkey ≡ e = nil }
 	if e == nil {
 		// exists.p ≡ ∃.`ls`.(=p)
-		tms, e = template.ParseFiles(fTms...)
+		tms, e = template.ParseFiles(fs.FTms...)
 		// { ∀.fTms.exists ∧ parsed.tm ≡ e = nil }
 	}
 	if e == nil {
@@ -74,7 +72,7 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager) {
 		h.HandleFunc(dashP, dashH)
 		h.HandleFunc(syncP, syncH)
 		h.HandleFunc("/favicon.ico", h.NotFoundHandler().ServeHTTP)
-		h.ListenAndServeTLS(u, cert, key, nil)
+		h.ListenAndServeTLS(u, fs.Cert, fs.Key, nil)
 	}
 	// { started.server ≡ e = nil }
 	if e != nil {
@@ -86,7 +84,7 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager) {
 // Handler of "/" path
 func indexH(w h.ResponseWriter, r *h.Request) {
 	if r.Method == h.MethodGet {
-		tms.ExecuteTemplate(w, path.Base(fTms[0]), nil)
+		tms.ExecuteTemplate(w, path.Base(fs.FTms[0]), nil)
 	}
 }
 
@@ -94,7 +92,7 @@ func indexH(w h.ResponseWriter, r *h.Request) {
 func staticH(w h.ResponseWriter, r *h.Request) {
 	var file string
 	file = path.Base(r.URL.Path)
-	file = path.Join("st", file)
+	file = path.Join(fs.JsFiles, file)
 	h.ServeFile(w, r, file)
 }
 
@@ -105,7 +103,9 @@ func dashH(w h.ResponseWriter, r *h.Request) {
 		// { written.UserName ∧ written.Cookie ≢ writtenError }
 	} else if r.Method == h.MethodGet {
 		dashGet(w, r)
-		//
+		// {}
+	} else {
+		log.Printf("Method %s not supported\n", r.Method)
 	}
 }
 
@@ -143,7 +143,7 @@ func dashPost(w h.ResponseWriter, r *h.Request) {
 		w.Write(notAuth)
 	}
 	if e != nil {
-		w.Write([]byte(e.Error()))
+		log.Println(e.Error())
 	}
 	// { written.(u.UserName) ∧ written.ck ≢ written.(e.Error()) }
 }
@@ -185,15 +185,13 @@ func writeInfo(w h.ResponseWriter, user string) {
 	// { loaded.inf ≡ e = nil }
 	if e == nil {
 		// { loaded.inf }
-		tms.ExecuteTemplate(w, path.Base(fTms[1]), inf)
+		tms.ExecuteTemplate(w, path.Base(fs.FTms[1]), inf)
 		// { written.inf }
 	} else {
 		// { ¬loaded.inf }
-		w.Write([]byte(e.Error()))
-		w.WriteHeader(500)
-		// { written.(e.Error()) }
+		log.Println(e.Error())
 	}
-	// { written.inf ≢ writtenError }
+	// { written.inf ≢ loggedError }
 }
 
 func parseToken(r *h.Request, p *rsa.PublicKey) (t *jwt.Token, e error) {
@@ -208,13 +206,37 @@ func parseToken(r *h.Request, p *rsa.PublicKey) (t *jwt.Token, e error) {
 			})
 	}
 	// { parsedToken.t ≡ e = nil }
+	if e != nil {
+		log.Println(e.Error())
+	}
 	return
 }
 
 func syncH(w h.ResponseWriter, r *h.Request) {
+	var e error
+	var bs []byte
+
 	// { r.Method ∈ h.Method* }
 	if r.Method == h.MethodPost {
-		// { sync Info parsed }
-		// { sync Info processed }
+		var t *jwt.Token
+		t, e = parseToken(r, &pkey.PublicKey)
+		if e == nil && !t.Valid {
+			e = fmt.Errorf("Token no válido")
+		}
+	} else {
+		e = fmt.Errorf("Método %s no soportado", r.Method)
+	}
+	if e == nil {
+		bs, e = ioutil.ReadAll(r.Body)
+	}
+	// { read.bs ≡ e = nil }
+	if e == nil {
+		// { read.bs }
+		var acs []tesis.AccMatch
+		e = json.Unmarshal(bs, acs)
+	}
+	// { jsonRep.bs.acs ≡ e = nil }
+	if e != nil {
+		log.Println(e.Error())
 	}
 }

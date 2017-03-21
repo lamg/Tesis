@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8">
+		<title>Autenticación</title>
+		<script src="/s/jquery.js" type="text/javascript">
+		</script>
+		<script src="/s/util.js" type="text/javascript">
+		</script>
+		<script src="/s/index.js" type="text/javascript">
+		</script>
+	</head>
+	<body>
+		<div>
+			<p id="resp">Ingrese sus credenciales</p>
+		</div>
+		<div>
+			<form id="authForm" method="post" action="/dash">
+				<input name="user" type="text">
+				<input name="pass" type="password">
+				<input type="submit">
+			</form>
+		</div>
+	</body>
+</html>
