@@ -29,6 +29,7 @@ type DBManager interface {
 	//todos los usuarios reciben la misma informacion
 	//del estado del sistema?
 	UserInfo(string) (*Info, error)
+	Synchronizer
 }
 
 type AccId string   //account id
@@ -54,3 +55,10 @@ type Synchronizer interface {
 
 // isCandidate ≡ ¬hasId ∨ existsSimilar
 // existsSimilar ≡ toLowerEq ∨ unAccentEq
+
+func EqAccMatch(a, b *AccMatch) (r bool) {
+	r = a.ADId == b.ADId && a.ADName == b.ADName &&
+		a.DBId == b.DBId && a.SrcDB == b.SrcDB &&
+		a.SrcID == b.SrcID && a.SrcName == b.SrcName
+	return
+}

@@ -1,15 +1,6 @@
 package tesis
 
-type DummySync struct {
-	synced bool
-}
-
-func NewDummySync() (s *DummySync) {
-	s = &DummySync{synced: false}
-	return
-}
-
-func (s *DummySync) Candidates() (a []AccMatch, e error) {
+func (s *DummyManager) Candidates() (a []AccMatch, e error) {
 	if !s.synced {
 		a = []AccMatch{
 			AccMatch{DBId: "0", SrcID: "8901191122"},
@@ -22,7 +13,7 @@ func (s *DummySync) Candidates() (a []AccMatch, e error) {
 	return
 }
 
-func (s *DummySync) Synchronize(a []AccMatch) (e error) {
+func (s *DummyManager) Synchronize(a []AccMatch) (e error) {
 	s.synced = true
 	return
 }
@@ -36,18 +27,18 @@ func (d *DummyAuth) Authenticate(u, p string) (b bool) {
 }
 
 type DummyManager struct {
-	syncer Synchronizer
+	synced bool
 }
 
 func NewDummyManager() (m *DummyManager) {
-	m = &DummyManager{syncer: NewDummySync()}
+	m = &DummyManager{synced: false}
 	return
 }
 
 func (m *DummyManager) UserInfo(u string) (inf *Info, e error) {
 	var cs []AccMatch
 	var re []Change
-	cs, e = m.syncer.Candidates()
+	cs, e = m.Candidates()
 	if e == nil {
 		re = make([]Change, 0)
 		inf = &Info{Name: u, Matches: cs, Record: re}

@@ -6,7 +6,10 @@ $(function () {
 });
 
 function postAccMatches() {
-		//select matches ids from page
+		//get selected AccMatches
+		//post them
+		//write syncronized AccMatches
+		//in a decent widget
 		console.log("postAccMatches");
 		
 		$.ajax ({

@@ -1,8 +1,6 @@
 package http
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"github.com/lamg/tesis"
 	a "github.com/stretchr/testify/assert"
 	"testing"
@@ -42,9 +40,14 @@ func TestHTTPPortal(t *testing.T) {
 	if a.NoError(t, e) {
 		t.Log(s)
 	}
-}
-
-func TestGenKey(t *testing.T) {
-	k, e := rsa.GenerateKey(rand.Reader, 2048)
-	a.True(t, k != nil && e == nil)
+	if e == nil {
+		s, e = cl.Sync()
+	}
+	if a.NoError(t, e) {
+		t.Log(s)
+	}
+	if e == nil {
+		s, e = cl.Sync()
+	}
+	a.Empty(t, s, "Fallo en sincronización")
 }

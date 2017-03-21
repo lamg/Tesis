@@ -140,7 +140,7 @@ func dashPost(w h.ResponseWriter, r *h.Request) {
 			// { written.(u.UserName) ∧ written.ck }
 		}
 	} else {
-		w.Write(notAuth)
+		_, e = w.Write(notAuth)
 	}
 	if e != nil {
 		log.Println(e.Error())
@@ -155,21 +155,24 @@ func dashGet(w h.ResponseWriter, r *h.Request) {
 	var t *jwt.Token
 	var e error
 	t, e = parseToken(r, &pkey.PublicKey)
-	// { e = nil ∧ t.Valid ≡ auth.(user.t) }
+	// { e = nil ≡ t.Valid ≡ auth.(user.t) }
 	if e == nil && t.Valid {
 		var clm jwt.MapClaims
 		var us string
-
 		// { t.Claims: jwt.MapClaims }
 		clm = t.Claims.(jwt.MapClaims)
 		us = clm["user"].(string)
 		writeInfo(w, us)
 		// { writtenInfo.us }
-	} else {
-		// { e ≠ nil ∨ ¬t.Valid }
-		w.Write(notAuth)
+	} else if e == nil {
+		// { ¬t.Valid }
 		w.WriteHeader(401)
+		_, e = w.Write(notAuth)
 	}
+	if e != nil {
+		log.Println(e.Error())
+	}
+
 	// { (writtenInfo.us ≢ written.notAuth }
 }
 
@@ -216,7 +219,6 @@ func syncH(w h.ResponseWriter, r *h.Request) {
 	var e error
 	var bs []byte
 
-	// { r.Method ∈ h.Method* }
 	if r.Method == h.MethodPost {
 		var t *jwt.Token
 		t, e = parseToken(r, &pkey.PublicKey)
@@ -224,19 +226,60 @@ func syncH(w h.ResponseWriter, r *h.Request) {
 			e = fmt.Errorf("Token no válido")
 		}
 	} else {
-		e = fmt.Errorf("Método %s no soportado", r.Method)
+		e = fmt.Errorf("%s no soportado en /sync", r.Method)
 	}
+	// { r.Method = h.MethodPost ∧ validJWT ≡ e = nil }
 	if e == nil {
 		bs, e = ioutil.ReadAll(r.Body)
 	}
 	// { read.bs ≡ e = nil }
+	var acs []tesis.AccMatch
 	if e == nil {
 		// { read.bs }
-		var acs []tesis.AccMatch
-		e = json.Unmarshal(bs, acs)
+		e = json.Unmarshal(bs, &acs)
 	}
 	// { jsonRep.bs.acs ≡ e = nil }
+	var cs []tesis.AccMatch
+	if e == nil {
+		cs, e = db.Candidates()
+	}
+	if e == nil {
+		var ex bool
+		var x, y, i int
+		ex, x, y, i = true, 0, len(cs), 0
+		for ex && i != len(acs) {
+			for x != y {
+				ex = tesis.EqAccMatch(&acs[i], &cs[x])
+				if ex {
+					x = x + 1
+				} else {
+					y = x
+				}
+			}
+			i = i + 1
+		}
+		// bounded linear search of the first element
+		// in acs not in cs
+		if !ex {
+			e = db.Synchronize(acs)
+		} else {
+			e = fmt.Errorf("Candidato falso %v", acs)
+		}
+	}
+	// { synchronized.acs ≡ e = nil }
+	if e == nil {
+		_, e = w.Write(bs)
+	}
+	// { written.w.syncedAccMatches }
 	if e != nil {
 		log.Println(e.Error())
 	}
 }
+
+/*
+{ A ≢ ¬R }
+if R → { A } S { B }
+  ¬R → skip
+fi
+{ B ≢ ¬R }
+*/
