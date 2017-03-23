@@ -1,14 +1,14 @@
 package http
 
 import (
-	"crypto/tls"
-	"fmt"
-
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"github.com/lamg/tesis"
 	"io"
 	"io/ioutil"
+	"log"
 	h "net/http"
 )
 
@@ -32,12 +32,17 @@ func NewPortalUser(url string) (p *PortalUser) {
 func (p *PortalUser) Auth(user, pass string) (a bool, e error) {
 	a = false
 	var r *h.Response
-
-	r, e = p.client.PostForm(p.auInf,
-		map[string][]string{
-			"user": []string{user},
-			"pass": []string{pass},
-		})
+	var cr *tesis.Credentials
+	var bs []byte
+	cr = &tesis.Credentials{User: user, Pass: pass}
+	bs, e = json.Marshal(cr)
+	if e == nil {
+		var rd io.Reader
+		rd = bytes.NewReader(bs)
+		r, e = p.client.Post(p.index+authP, "application/json", rd)
+	} else {
+		log.Panicf("Incorrect program: %s", e.Error())
+	}
 	if e == nil {
 		if r.StatusCode == 200 {
 			var cs []*h.Cookie
@@ -47,7 +52,10 @@ func (p *PortalUser) Auth(user, pass string) (a bool, e error) {
 				//token string stored
 				a = true
 			} else {
-				e = fmt.Errorf("Cantidad de cookies %d ≠ 1", len(cs))
+				bs, e = ioutil.ReadAll(r.Body)
+				if e == nil {
+					e = fmt.Errorf("Cantidad de cookies %d ≠ 1, %s", len(cs), string(bs))
+				}
 			}
 		} else {
 			e = fmt.Errorf("Status = %s", r.Status)
@@ -62,7 +70,7 @@ func (p *PortalUser) Info() (s string, e error) {
 		e = fmt.Errorf("Auth failed")
 	}
 	if e == nil {
-		q, e = h.NewRequest("GET", p.auInf, nil)
+		q, e = h.NewRequest("GET", p.index+dashP, nil)
 	}
 	if e == nil {
 		q.AddCookie(p.ck)
@@ -109,8 +117,8 @@ func (p *PortalUser) Sync() (s string, e error) {
 	var rd io.Reader
 	acs = []tesis.AccMatch{
 		tesis.AccMatch{
-			DBId:    "0",
-			ADId:    "1",
+			DBId:    "1",
+			ADId:    "3",
 			ADName:  "LUIS",
 			SrcName: "Luis",
 		},

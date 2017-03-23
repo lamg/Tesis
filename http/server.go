@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/lamg/tesis"
-	"html/template"
+	"io"
 	"io/ioutil"
 	"log"
 	h "net/http"
@@ -20,24 +20,20 @@ const (
 	AuthHd = "auth"
 	//paths
 	dashP = "/dash"
-	syncP = "/sync"
+	syncP = "/a/sync"
+	authP = "/a/auth"
 )
 
 var (
 	notFound = []byte("Archivo no encontrado")
 	notAuth  = []byte("No autenticado")
-	tms      *template.Template
 	pkey     *rsa.PrivateKey
 	auth     tesis.Authenticator
 	db       tesis.DBManager
-	indexTm  *template.Template
-	dashTm   *template.Template
-	fs       *ServFS
 )
 
 type ServFS struct {
-	JsFiles, Cert, Key string
-	FTms               []string
+	Cert, Key string
 }
 
 // Creates a new instance of HTTPPortal and starts serving.
@@ -45,6 +41,8 @@ type ServFS struct {
 //  a: User authentication interface
 //  q: Database manager interface
 //  f: Files needed to run the server
+//  db: []AccMatch,!
+//  h.DefaultServer: h.Server,!
 func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServFS) {
 	var bs []byte
 	var e error
@@ -52,9 +50,9 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) h.RoundTripper),
 	}
 	// { disabled.HTTP2 }
-	auth, db, fs = a, d, f
+	auth, db = a, d
 	// { auth,db,fs:initialized }
-	bs, e = ioutil.ReadFile(fs.Key)
+	bs, e = ioutil.ReadFile(f.Key)
 	// { loaded.key.bs ≡ e = nil }
 	if e == nil {
 		// { loaded.key.bs }
@@ -62,17 +60,11 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 	}
 	// { parsed.pkey ≡ e = nil }
 	if e == nil {
-		// exists.p ≡ ∃.`ls`.(=p)
-		tms, e = template.ParseFiles(fs.FTms...)
-		// { ∀.fTms.exists ∧ parsed.tm ≡ e = nil }
-	}
-	if e == nil {
 		h.HandleFunc("/", indexH)
-		h.HandleFunc("/s/", staticH)
-		h.HandleFunc(dashP, dashH)
 		h.HandleFunc(syncP, syncH)
+		h.HandleFunc(authP, authH)
 		h.HandleFunc("/favicon.ico", h.NotFoundHandler().ServeHTTP)
-		h.ListenAndServeTLS(u, fs.Cert, fs.Key, nil)
+		h.ListenAndServeTLS(u, f.Cert, f.Key, nil)
 	}
 	// { started.server ≡ e = nil }
 	if e != nil {
@@ -83,122 +75,92 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 
 // Handler of "/" path
 func indexH(w h.ResponseWriter, r *h.Request) {
+	var e error
 	if r.Method == h.MethodGet {
-		tms.ExecuteTemplate(w, path.Base(fs.FTms[0]), nil)
-	}
-}
-
-// Handler of "/s" path
-func staticH(w h.ResponseWriter, r *h.Request) {
-	var file string
-	file = path.Base(r.URL.Path)
-	file = path.Join(fs.JsFiles, file)
-	h.ServeFile(w, r, file)
-}
-
-func dashH(w h.ResponseWriter, r *h.Request) {
-	// { r.Method ∈ h.Method* }
-	if r.Method == h.MethodPost {
-		dashPost(w, r)
-		// { written.UserName ∧ written.Cookie ≢ writtenError }
-	} else if r.Method == h.MethodGet {
-		dashGet(w, r)
-		// {}
-	} else {
-		log.Printf("Method %s not supported\n", r.Method)
-	}
-}
-
-func dashPost(w h.ResponseWriter, r *h.Request) {
-	//globals
-	// pkey: *rsa.PrivateKey,?
-	// auth: Authenticator,?
-	// AuthHd: string,?
-	//end
-	var e error
-	var user, pass string
-	var v bool
-	e, v = r.ParseForm(), false
-	if e == nil {
-		user, pass = r.PostFormValue("user"), r.PostFormValue("pass")
-		v = auth.Authenticate(user, pass)
-	}
-	// { v ≡ registered.user }
-	if v {
-		var u *tesis.User
-		var t *jwt.Token
-		var js string
-		u = &tesis.User{UserName: user}
-		t = jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), u)
-		js, e = t.SignedString(pkey)
-		// { signedString.js ≡ e = nil }
-		if e == nil {
-			var ck *h.Cookie
-			ck = &h.Cookie{Name: AuthHd, Value: js}
-			h.SetCookie(w, ck)
-			writeInfo(w, u.UserName)
-			// { written.(u.UserName) ∧ written.ck }
+		var file, ext string
+		file = path.Base(r.URL.Path)
+		if file == "/" {
+			file = "index"
 		}
+		ext = path.Ext(file)
+		if ext == ".js" {
+			w.Header().Set("content-type", "application/javascript")
+		} else if ext == ".css" {
+			w.Header().Set("content-type", "text/css")
+		} else {
+			file = file + ".html"
+			w.Header().Set("content-type", "text/html")
+		}
+		h.ServeFile(w, r, file)
+
 	} else {
-		_, e = w.Write(notAuth)
+		e = fmt.Errorf("Método %s no soportado por /", r.Method)
 	}
-	if e != nil {
-		log.Println(e.Error())
-	}
-	// { written.(u.UserName) ∧ written.ck ≢ written.(e.Error()) }
+	writeError(w, e)
 }
 
-func dashGet(w h.ResponseWriter, r *h.Request) {
-	//globals
-	//p: *rsa.PublicKey,?
-	//end
-	var t *jwt.Token
-	var e error
-	t, e = parseToken(r, &pkey.PublicKey)
-	// { e = nil ≡ t.Valid ≡ auth.(user.t) }
-	if e == nil && t.Valid {
-		var clm jwt.MapClaims
-		var us string
-		// { t.Claims: jwt.MapClaims }
-		clm = t.Claims.(jwt.MapClaims)
-		us = clm["user"].(string)
-		writeInfo(w, us)
-		// { writtenInfo.us }
-	} else if e == nil {
-		// { ¬t.Valid }
-		w.WriteHeader(401)
-		_, e = w.Write(notAuth)
-	}
+func writeError(w h.ResponseWriter, e error) {
 	if e != nil {
-		log.Println(e.Error())
+		var in *tesis.Info
+		var bs []byte
+		in = &tesis.Info{Error: e.Error()}
+		bs, e = json.Marshal(in)
+		if e != nil {
+			// precondition of json.Marshal is false
+			// i.e. program is incorrect
+			log.Panicf("Incorrect program: %s", e.Error())
+		} else {
+			_, e = w.Write(bs)
+		}
 	}
-
-	// { (writtenInfo.us ≢ written.notAuth }
+	// { writtenError ≡ e ≠ nil }
+	if e != nil {
+		log.Print(e.Error())
+	}
 }
 
-func writeInfo(w h.ResponseWriter, user string) {
-	// globals
-	// db: DBManager,?
-	// fTms: []string,?
-	// tms: *template.Template,?
-	// end
-	var inf *tesis.Info
+func authH(w h.ResponseWriter, r *h.Request) {
 	var e error
-	inf, e = db.UserInfo(user)
-	// { loaded.inf ≡ e = nil }
+	var cr *tesis.Credentials
+	var bs []byte
+	if r.Method == h.MethodPost {
+		bs, e = ioutil.ReadAll(r.Body)
+	} else {
+		e = fmt.Errorf("Method %s not supported by /a/auth", r.Method)
+	}
 	if e == nil {
-		// { loaded.inf }
-		tms.ExecuteTemplate(w, path.Base(fs.FTms[1]), inf)
-		// { written.inf }
-	} else {
-		// { ¬loaded.inf }
-		log.Println(e.Error())
+		cr = new(tesis.Credentials)
+		e = json.Unmarshal(bs, cr)
 	}
-	// { written.inf ≢ loggedError }
+	var js string
+	if e == nil {
+		var v bool
+		v = auth.Authenticate(cr.User, cr.Pass)
+		// { v ≡ registered.user }
+		if v {
+			var u *tesis.User
+			var t *jwt.Token
+			u = &tesis.User{UserName: cr.User}
+			t = jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), u)
+			js, e = t.SignedString(pkey)
+			// { signedString.js ≡ e = nil }
+		} else {
+			e = fmt.Errorf("Credenciales inválidas")
+		}
+	}
+	if e == nil {
+		var ck *h.Cookie
+		ck = &h.Cookie{Name: AuthHd, Value: js}
+		h.SetCookie(w, ck)
+		// { written.ck }
+	}
+	writeError(w, e)
+	// { writtenError ≢ writtenCookie }
 }
 
-func parseToken(r *h.Request, p *rsa.PublicKey) (t *jwt.Token, e error) {
+func parseUserName(r *h.Request, p *rsa.PublicKey) (us string, e error) {
 	var ck *h.Cookie
+	var t *jwt.Token
 	ck, e = r.Cookie(AuthHd)
 	// { readCookie.ck ≡ e = nil }
 	if e == nil {
@@ -209,29 +171,40 @@ func parseToken(r *h.Request, p *rsa.PublicKey) (t *jwt.Token, e error) {
 			})
 	}
 	// { parsedToken.t ≡ e = nil }
-	if e != nil {
-		log.Println(e.Error())
+	if e == nil {
+		if t.Valid {
+			var clm jwt.MapClaims
+			// TODO what can go wrong here?
+			// { t.Claims: jwt.MapClaims }
+			clm = t.Claims.(jwt.MapClaims)
+			us = clm["user"].(string)
+		} else {
+			e = fmt.Errorf("Token no válido")
+		}
 	}
 	return
 }
 
 func syncH(w h.ResponseWriter, r *h.Request) {
 	var e error
-	var bs []byte
-
-	if r.Method == h.MethodPost {
-		var t *jwt.Token
-		t, e = parseToken(r, &pkey.PublicKey)
-		if e == nil && !t.Valid {
-			e = fmt.Errorf("Token no válido")
-		}
-	} else {
-		e = fmt.Errorf("%s no soportado en /sync", r.Method)
-	}
-	// { r.Method = h.MethodPost ∧ validJWT ≡ e = nil }
+	var us string
+	us, e = parseUserName(r, &pkey.PublicKey)
 	if e == nil {
-		bs, e = ioutil.ReadAll(r.Body)
+		if r.Method == h.MethodPost {
+			e = syncPost(w, r.Body, us)
+		} else if r.Method == h.MethodGet {
+			e = syncGet(w, us)
+		} else {
+			e = fmt.Errorf("%s no soportado en /sync", r.Method)
+		}
 	}
+	writeError(w, e)
+}
+
+func syncPost(w h.ResponseWriter, rc io.Reader, us string) (e error) {
+	var bs []byte
+	// { r.Method = h.MethodPost ∧ validJWT ≡ e = nil }
+	bs, e = ioutil.ReadAll(rc)
 	// { read.bs ≡ e = nil }
 	var acs []tesis.AccMatch
 	if e == nil {
@@ -261,19 +234,38 @@ func syncH(w h.ResponseWriter, r *h.Request) {
 		// bounded linear search of the first element
 		// in acs not in cs
 		if !ex {
-			e = db.Synchronize(acs)
+			e = db.Synchronize(us, acs)
 		} else {
 			e = fmt.Errorf("Candidato falso %v", acs)
 		}
+		if e == nil {
+			w.Write(bs)
+		}
 	}
 	// { synchronized.acs ≡ e = nil }
+	return
+}
+
+func syncGet(w h.ResponseWriter, user string) (e error) {
+	// globals
+	// db: DBManager,?
+	// end
+	var inf *tesis.Info
+	var bs []byte
+	inf, e = db.UserInfo(user)
+	// { loaded.inf ≡ e = nil }
 	if e == nil {
+		// { loaded.inf }
+		bs, e = json.Marshal(inf)
+		// { written.inf }
+	}
+	if e == nil {
+		w.Header().Set("content-type", "application/json")
 		_, e = w.Write(bs)
+		//sent relevant information as JSON, according user
 	}
-	// { written.w.syncedAccMatches }
-	if e != nil {
-		log.Println(e.Error())
-	}
+	// { written.inf ≡ e = nil }
+	return
 }
 
 /*

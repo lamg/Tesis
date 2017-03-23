@@ -6,14 +6,20 @@ import (
 )
 
 type Info struct {
-	Name    string
-	Record  []Change
-	Matches []AccMatch
+	Name    string     `json:"name"`
+	Error   string     `json:"error"`
+	Record  []Change   `json:"record"`
+	Matches []AccMatch `json:"matches"`
 }
 
 type Change struct {
 	Time *time.Time
 	SRec []AccMatch
+}
+
+type Credentials struct {
+	User string `json:"user"`
+	Pass string `json:"pass"`
 }
 
 type User struct {
@@ -47,7 +53,7 @@ type AccMatch struct {
 
 type Synchronizer interface {
 	//synchronize a list of accounts
-	Synchronize([]AccMatch) error
+	Synchronize(string, []AccMatch) error
 
 	//get the candidates for synchronization (who and why?)
 	Candidates() ([]AccMatch, error)

@@ -13,8 +13,13 @@ func (s *DummyManager) Candidates() (a []AccMatch, e error) {
 	return
 }
 
-func (s *DummyManager) Synchronize(a []AccMatch) (e error) {
-	s.synced = true
+func (s *DummyManager) Synchronize(user string, a []AccMatch) (e error) {
+	//make this according the specification
+	var cs []AccMatch
+	cs, _ = s.Candidates()
+	if len(a) == len(cs) {
+		s.synced = true
+	}
 	return
 }
 

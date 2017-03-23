@@ -14,7 +14,7 @@ func main() {
 	var e error
 	var fs *http.ServFS
 
-	hp, fs = "localhost:10443", &http.ServFS{"st", "cert.pem", "key.pem", []string{"st/index.html", "st/dash.html"}}
+	hp, fs = "localhost:10443", &http.ServFS{"cert.pem", "key.pem"}
 
 	// au, e = tesis.NewLDAPAuth("ad.upr.edu.cu", "@upr.edu.cu", 636)
 	au = new(tesis.DummyAuth)

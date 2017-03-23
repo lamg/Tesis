@@ -6,6 +6,8 @@ $(function () {
 });
 
 function postAccMatches() {
+		//do request to get AccMatches
+		//present results
 		//get selected AccMatches
 		//post them
 		//write syncronized AccMatches

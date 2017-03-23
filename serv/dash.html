@@ -3,20 +3,16 @@
 	<head>
 		<meta charset="UTF-8">
 		<title>Portal de Servicios de la UPR</title>
-		<script src="/s/jquery.js" type="text/javascript">
+		<script src="/jquery.js" type="text/javascript">
 		</script>
-		<script src="/s/util.js" type="text/javascript">
+		<script src="/util.js" type="text/javascript">
 		</script>
-		<script src="/s/dash.js" type="text/javascript">
+		<script src="/dash.js" type="text/javascript">
 		</script>
 	</head>
 	<body>
 		<div>
-			<p>Estado de sincronización {{.Name}}</p>
-			<ul>
-				{{range .Matches}} <li>{{.}}</li>
-				{{else}} <strong>Vacío</strong> {{end}}
-			</ul>
+			<p>Estado de sincronización </p>
 			<form>
 				<input type="button" value="Cerrar sesión"
 							 onclick="logOut();">

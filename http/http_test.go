@@ -12,7 +12,7 @@ func TestHTTPPortal(t *testing.T) {
 	var fs *ServFS
 	// { files referenced in fs exist
 	// in cwd }
-	fs = &ServFS{"st", "cert.pem", "key.pem", []string{"st/index.html", "st/dash.html"}}
+	fs = &ServFS{"cert.pem", "key.pem"}
 	// {fs initialized}
 	hp := "localhost:10443"
 	au := &tesis.DummyAuth{}
@@ -48,6 +48,7 @@ func TestHTTPPortal(t *testing.T) {
 	}
 	if e == nil {
 		s, e = cl.Sync()
+		t.Log(s)
 	}
-	a.Empty(t, s, "Fallo en sincronización")
+	a.NotEmpty(t, s, "Fallo en sincronización")
 }
