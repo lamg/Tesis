@@ -212,35 +212,19 @@ func syncPost(w h.ResponseWriter, rc io.Reader, us string) (e error) {
 		e = json.Unmarshal(bs, &acs)
 	}
 	// { jsonRep.bs.acs ≡ e = nil }
+	if e == nil {
+		e = db.Synchronize(us, acs)
+	}
 	var cs []tesis.AccMatch
 	if e == nil {
 		cs, e = db.Candidates()
 	}
+	var rs []byte
 	if e == nil {
-		var ex bool
-		var x, y, i int
-		ex, x, y, i = true, 0, len(cs), 0
-		for ex && i != len(acs) {
-			for x != y {
-				ex = tesis.EqAccMatch(&acs[i], &cs[x])
-				if ex {
-					x = x + 1
-				} else {
-					y = x
-				}
-			}
-			i = i + 1
-		}
-		// bounded linear search of the first element
-		// in acs not in cs
-		if !ex {
-			e = db.Synchronize(us, acs)
-		} else {
-			e = fmt.Errorf("Candidato falso %v", acs)
-		}
-		if e == nil {
-			w.Write(bs)
-		}
+		rs, e = json.Marshal(cs)
+	}
+	if e == nil {
+		_, e = w.Write(rs)
 	}
 	// { synchronized.acs ≡ e = nil }
 	return

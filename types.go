@@ -13,8 +13,8 @@ type Info struct {
 }
 
 type Change struct {
-	Time *time.Time
-	SRec []AccMatch
+	Time time.Time  `json:"time"`
+	SRec []AccMatch `json:"srec"`
 }
 
 type Credentials struct {
@@ -32,8 +32,6 @@ type Authenticator interface {
 }
 
 type DBManager interface {
-	//todos los usuarios reciben la misma informacion
-	//del estado del sistema?
 	UserInfo(string) (*Info, error)
 	Synchronizer
 }
@@ -45,7 +43,7 @@ type SStatus string //synchronization status
 type AccMatch struct {
 	DBId    AccId
 	ADId    string
-	SrcID   string
+	SrcIN   string
 	ADName  string
 	SrcName string
 	SrcDB   string
@@ -65,6 +63,6 @@ type Synchronizer interface {
 func EqAccMatch(a, b *AccMatch) (r bool) {
 	r = a.ADId == b.ADId && a.ADName == b.ADName &&
 		a.DBId == b.DBId && a.SrcDB == b.SrcDB &&
-		a.SrcID == b.SrcID && a.SrcName == b.SrcName
+		a.SrcIN == b.SrcIN && a.SrcName == b.SrcName
 	return
 }

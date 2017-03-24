@@ -1,24 +1,38 @@
 package tesis
 
+import (
+	"fmt"
+)
+
 func (s *DummyManager) Candidates() (a []AccMatch, e error) {
-	if !s.synced {
-		a = []AccMatch{
-			AccMatch{DBId: "0", SrcID: "8901191122"},
-			AccMatch{DBId: "1", ADId: "3", ADName: "LUIS", SrcName: "Luis"},
-		}
-	} else {
-		a = make([]AccMatch, 0)
-	}
+	a = s.cs
 	//iterate DB and filter comparing with AD
 	return
 }
 
 func (s *DummyManager) Synchronize(user string, a []AccMatch) (e error) {
-	//make this according the specification
-	var cs []AccMatch
-	cs, _ = s.Candidates()
-	if len(a) == len(cs) {
-		s.synced = true
+	var r []int
+	var ex bool
+	r, ex = make([]int, 0, len(a)), true
+	for i := 0; ex && i != len(a); i++ {
+		var x, y int
+		x, y, ex = 0, len(s.cs), false
+		for x != y {
+			ex = EqAccMatch(&a[i], &s.cs[x])
+			if !ex {
+				x = x + 1
+			} else {
+				//TODO en vez de dejar los de a, quitarlos
+				x, r = y, append(r, x)
+			}
+		}
+		if !ex {
+			e = fmt.Errorf("Elemento %v no pertenece a candidatos a ser sincronizados", a[i])
+		}
+	}
+	//TODO
+	for i, _ := range r {
+		s.cs = append(s.cs[:r[i]], s.cs[r[i]+1:]...)
 	}
 	return
 }
@@ -32,11 +46,16 @@ func (d *DummyAuth) Authenticate(u, p string) (b bool) {
 }
 
 type DummyManager struct {
-	synced bool
+	cs []AccMatch
 }
 
 func NewDummyManager() (m *DummyManager) {
-	m = &DummyManager{synced: false}
+	m = &DummyManager{
+		cs: []AccMatch{
+			AccMatch{DBId: "0", SrcIN: "8901191122"},
+			AccMatch{DBId: "1", ADId: "3", ADName: "LUIS", SrcName: "Luis", SrcDB: "ASET"},
+		},
+	}
 	return
 }
 

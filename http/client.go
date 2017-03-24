@@ -121,6 +121,7 @@ func (p *PortalUser) Sync() (s string, e error) {
 			ADId:    "3",
 			ADName:  "LUIS",
 			SrcName: "Luis",
+			SrcDB:   "ASET",
 		},
 	}
 	b, e = json.Marshal(acs)

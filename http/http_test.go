@@ -46,9 +46,4 @@ func TestHTTPPortal(t *testing.T) {
 	if a.NoError(t, e) {
 		t.Log(s)
 	}
-	if e == nil {
-		s, e = cl.Sync()
-		t.Log(s)
-	}
-	a.NotEmpty(t, s, "Fallo en sincronización")
 }
