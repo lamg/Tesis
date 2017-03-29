@@ -13,6 +13,7 @@ function sendCredentials(){
 		$.post('/a/auth',
 					 JSON.stringify({'user':user, 'pass':pass}),
 					 function(data) {
+							 document.cookie = data;
 							 window.location.replace('/dash');
 					 }
 		);

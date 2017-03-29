@@ -49,6 +49,12 @@ type AccMatch struct {
 	SrcDB   string
 }
 
+type DBRecord struct {
+	Id   AccId  //database key field
+	IN   string //identity number
+	Name string //person name
+}
+
 type Synchronizer interface {
 	//synchronize a list of accounts
 	Synchronize(string, []AccMatch) error

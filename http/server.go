@@ -62,9 +62,8 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 	if e == nil {
 		h.HandleFunc(syncP, syncH)
 		h.HandleFunc(authP, authH)
-		h.HandleFunc("/node_modules/", nodeH)
-		h.HandleFunc("/favicon.ico", h.NotFoundHandler().ServeHTTP)
 		h.HandleFunc("/", indexH)
+		h.HandleFunc("/images/", imagesH)
 		h.ListenAndServeTLS(u, f.Cert, f.Key, nil)
 	}
 	// { started.server ≡ e = nil }
@@ -74,17 +73,20 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 	return
 }
 
-func nodeH(w h.ResponseWriter, r *h.Request) {
-	//TODO how to serve React?
-	var file string
-	log.Print(r.URL.Path)
-	if len(r.URL.Path) == 0 {
-		file = r.URL.Path
-	} else {
-		file = r.URL.Path[1:]
+func imagesH(w h.ResponseWriter, r *h.Request) {
+	var e error
+	if r.Method != h.MethodGet {
+		e = fmt.Errorf("Método %s no soportado por /images/", r.Method)
 	}
-	w.Header().Set("content-type", "application/javascript")
-	h.ServeFile(w, r, file)
+	if e == nil && len(r.URL.Path) == 0 {
+		e = fmt.Errorf("r.URL.Path vacío")
+	}
+	if e == nil {
+		var file string
+		file = r.URL.Path[1:]
+		h.ServeFile(w, r, file)
+	}
+	writeError(w, e)
 }
 
 // Handler of "/" path
@@ -101,7 +103,7 @@ func indexH(w h.ResponseWriter, r *h.Request) {
 			w.Header().Set("content-type", "application/javascript")
 		} else if ext == ".css" {
 			w.Header().Set("content-type", "text/css")
-		} else {
+		} else if ext == "" {
 			file = file + ".html"
 			w.Header().Set("content-type", "text/html")
 		}
@@ -165,7 +167,7 @@ func authH(w h.ResponseWriter, r *h.Request) {
 	if e == nil {
 		var ck *h.Cookie
 		ck = &h.Cookie{Name: AuthHd, Value: js}
-		h.SetCookie(w, ck)
+		_, e = w.Write([]byte(ck.String()))
 		// { written.ck }
 	}
 	writeError(w, e)

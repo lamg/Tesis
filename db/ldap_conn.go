@@ -6,6 +6,8 @@ import (
 	"github.com/go-ldap/ldap"
 )
 
+const IN = "in" //identity number
+
 type LDAPAuth struct {
 	c  *ldap.Conn
 	sf string //suffix of user account (string after @)
@@ -36,5 +38,75 @@ func NewLDAPAuth(lds, sf string, ldp int) (l *LDAPAuth, e error) {
 
 func (l *LDAPAuth) Close() (e error) {
 	l.c.Close()
+	return
+}
+
+func Search(u string, c *ldap.Conn) (n []*ldap.EntryAttribute, e error) {
+	var (
+		baseDN                = "dc=upr,dc=edu,dc=cu"
+		scope                 = ldap.ScopeWholeSubtree
+		deref                 = ldap.NeverDerefAliases
+		sizel                 = 0
+		timel                 = 0
+		tpeol                 = false //TypesOnly
+		filter                = fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))", u)
+		attrs                 = []string{}
+		conts  []ldap.Control = nil //[]Control
+		s      *ldap.SearchRequest
+		r      *ldap.SearchResult
+	)
+
+	s = ldap.NewSearchRequest(baseDN, scope, deref,
+		sizel, timel, tpeol, filter, attrs, conts)
+	r, e = c.Search(s)
+	if e == nil && len(r.Entries) != 0 {
+		n = r.Entries[0].Attributes
+	} else if e == nil {
+		e = fmt.Errorf("La búsqueda de %s falló", u)
+	}
+	// { attributes.u.n ≡ e = nil }
+	return
+}
+
+func GetUsers(c *ldap.Conn) (us []tesis.DBRecord, e error) {
+	var f string
+	var a []string
+	f, a = "(&(objectClass=user))", []string{"cn",
+		"userPrincipalName", IN}
+	var n []*ldap.Entry
+	n, e = SearchFilter(f, a, c)
+	us = make([]tesis.DBRecord, len(n))
+	for i := range n {
+		var r tesis.DBRecord
+		r = tesis.DBRecord{
+			Name: i.GetAttributeValue("cn"),
+			Id:   i.GetAttributeValue("userPrincipalName"),
+			IN:   i.GetAttributeValue(IN),
+		}
+		us = append(us, r)
+	}
+	return
+}
+
+func SearchFilter(f string, ats []string, c *ldap.Conn) (n []*ldap.Entry, e error) {
+	var (
+		baseDN                = "dc=upr,dc=edu,dc=cu"
+		scope                 = ldap.ScopeWholeSubtree
+		deref                 = ldap.NeverDerefAliases
+		sizel                 = 0
+		timel                 = 0
+		tpeol                 = false //TypesOnly
+		conts  []ldap.Control = nil   //[]Control
+		s      *ldap.SearchRequest
+		r      *ldap.SearchResult
+	)
+	s = ldap.NewSearchRequest(baseDN, scope, deref,
+		sizel, timel, tpeol, f, ats, conts)
+	r, e = c.Search(s)
+	if e == nil && len(r.Entries) == 0 {
+		e = fmt.Errorf("La búsqueda de %s falló", u)
+	} else {
+		n = r.Entries
+	}
 	return
 }
