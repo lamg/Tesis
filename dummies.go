@@ -22,7 +22,6 @@ func (s *DummyManager) Synchronize(user string, a []AccMatch) (e error) {
 			if !ex {
 				x = x + 1
 			} else {
-				//TODO en vez de dejar los de a, quitarlos
 				x, r = y, append(r, x)
 			}
 		}
@@ -30,7 +29,6 @@ func (s *DummyManager) Synchronize(user string, a []AccMatch) (e error) {
 			e = fmt.Errorf("Elemento %v no pertenece a candidatos a ser sincronizados", a[i])
 		}
 	}
-	//TODO
 	for i, _ := range r {
 		s.cs = append(s.cs[:r[i]], s.cs[r[i]+1:]...)
 	}
@@ -54,6 +52,7 @@ func NewDummyManager() (m *DummyManager) {
 		cs: []AccMatch{
 			AccMatch{DBId: "0", SrcIN: "8901191122"},
 			AccMatch{DBId: "1", ADId: "3", ADName: "LUIS", SrcName: "Luis", SrcDB: "ASET"},
+			AccMatch{DBId: "2", SrcIN: "9001091221"},
 		},
 	}
 	return

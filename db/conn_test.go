@@ -1,9 +1,9 @@
-package tesis
+package db
 
 import (
 	"github.com/stretchr/testify/assert"
-	"testing"
 	"os"
+	"testing"
 )
 
 const (

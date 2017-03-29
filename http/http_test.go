@@ -46,4 +46,13 @@ func TestHTTPPortal(t *testing.T) {
 	if a.NoError(t, e) {
 		t.Log(s)
 	}
+	if e == nil {
+		s, e = cl.Sync()
+		// s has non nil error field
+		// since cl.Sync() tries to
+		// synchronize the same record again
+	}
+	if a.NoError(t, e) {
+		t.Log(s)
+	}
 }

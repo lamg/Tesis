@@ -60,10 +60,11 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 	}
 	// { parsed.pkey ≡ e = nil }
 	if e == nil {
-		h.HandleFunc("/", indexH)
 		h.HandleFunc(syncP, syncH)
 		h.HandleFunc(authP, authH)
+		h.HandleFunc("/node_modules/", nodeH)
 		h.HandleFunc("/favicon.ico", h.NotFoundHandler().ServeHTTP)
+		h.HandleFunc("/", indexH)
 		h.ListenAndServeTLS(u, f.Cert, f.Key, nil)
 	}
 	// { started.server ≡ e = nil }
@@ -71,6 +72,19 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 		log.Print(e.Error())
 	}
 	return
+}
+
+func nodeH(w h.ResponseWriter, r *h.Request) {
+	//TODO how to serve React?
+	var file string
+	log.Print(r.URL.Path)
+	if len(r.URL.Path) == 0 {
+		file = r.URL.Path
+	} else {
+		file = r.URL.Path[1:]
+	}
+	w.Header().Set("content-type", "application/javascript")
+	h.ServeFile(w, r, file)
 }
 
 // Handler of "/" path

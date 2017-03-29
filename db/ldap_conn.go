@@ -1,4 +1,4 @@
-package tesis
+package db
 
 import (
 	"crypto/tls"
