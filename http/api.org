@@ -1,0 +1,56 @@
+* HTTP REST API specification
+- HTTPS server listening in 10443
+- The API prefix is ~/api~
+- Correspondence between suffix, request method-body, and 
+  response code-body; with the following definitions
+
+	#+BEGIN_SRC
+	Cookie: HTTP Cookie with name "auth" and a JWT as value
+	Credentials: JSON {"user":username, "pass":password}
+	Error: JSON {"error":message}
+	AccMatch: JSON {
+    "dbId":DatabaseId, 
+    "adId":ActiveDirectoryId, 
+    "srcIN":SourceIdentityNumber, 
+    "srcName":SourceName, 
+    "srcDB":SourceDatabaseName,
+  }
+	Change: JSON {
+	  "time": DateTime,
+	  "srec": []AccMatch, //successfuly synchronized
+		"frec": []AccMatch, //failed to synchronize
+	}
+	Info: JSON { 
+    "name": username,
+		"changeLog": []Change,
+	  "matches": []AccMatch,
+  }
+	#+END_SRC
+	
+| Suffix | Request method-hasCookie-body  | Response code-body   |
+|        |                                |                      |
+|--------+--------------------------------+----------------------|
+|        | <30>                           | <20>                 |
+| /auth  | POST-false-Credentials         | if ok → 200-Cookie   ¬ok 400-error fi |
+| /sync  | POST-true-[]AccMatch           | if ok → 200-empty   ¬ok → 400-error fi |
+| /sync  | GET-true-empty                 | if ok → 200-Info   ¬ok → 400-error fi |
+
+
+- The frontend is the following multiprogram
+
+ #+BEGIN_SRC
+ var c:Cookie, e:Error, i:Info;
+ c, e := PostCredentialsToAuth()
+ ;if e = nil → i, e := GetWithCookieToSync(c) fi
+ ;if e = nil → Show(i)
+   e ≠ nil → Show(e)
+ fi
+ #+END_SRC
+ 
+ #+BEGIN_SRC
+ con s:[]AccMatch, c:Cookie;
+ var e:Error;
+ e := PostWithCookieToSync(c, s)
+ if e ≠ nil → Show(e) fi
+ #+END_SRC
+ 

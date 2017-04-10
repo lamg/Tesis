@@ -7,14 +7,14 @@ import (
 
 type Info struct {
 	Name    string     `json:"name"`
-	Error   string     `json:"error"`
-	Record  []Change   `json:"record"`
+	Record  []Change   `json:"changeLog"`
 	Matches []AccMatch `json:"matches"`
 }
 
 type Change struct {
 	Time time.Time  `json:"time"`
 	SRec []AccMatch `json:"srec"`
+	FRec []AccMatch `json:"frec"`
 }
 
 type Credentials struct {
