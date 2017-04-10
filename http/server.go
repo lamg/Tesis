@@ -17,11 +17,10 @@ import (
 
 const (
 	//Content files
-	AuthHd = "auth"
+	AuthHd = "Auth"
 	//paths
-	dashP = "/dash"
-	syncP = "/a/sync"
-	authP = "/a/auth"
+	syncP = "/api/sync"
+	authP = "/api/auth"
 )
 
 var (
@@ -63,7 +62,6 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 		h.HandleFunc(syncP, syncH)
 		h.HandleFunc(authP, authH)
 		h.HandleFunc("/", indexH)
-		h.HandleFunc("/images/", imagesH)
 		h.ListenAndServeTLS(u, f.Cert, f.Key, nil)
 	}
 	// { started.server ≡ e = nil }
@@ -71,22 +69,6 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 		log.Print(e.Error())
 	}
 	return
-}
-
-func imagesH(w h.ResponseWriter, r *h.Request) {
-	var e error
-	if r.Method != h.MethodGet {
-		e = fmt.Errorf("Método %s no soportado por /images/", r.Method)
-	}
-	if e == nil && len(r.URL.Path) == 0 {
-		e = fmt.Errorf("r.URL.Path vacío")
-	}
-	if e == nil {
-		var file string
-		file = r.URL.Path[1:]
-		h.ServeFile(w, r, file)
-	}
-	writeError(w, e)
 }
 
 // Handler of "/" path
@@ -119,13 +101,14 @@ func writeError(w h.ResponseWriter, e error) {
 	if e != nil {
 		var in *tesis.Info
 		var bs []byte
-		in = &tesis.Info{Error: e.Error()}
+		in = &tesis.Error{Message: e.Error()}
 		bs, e = json.Marshal(in)
 		if e != nil {
 			// precondition of json.Marshal is false
 			// i.e. program is incorrect
 			log.Panicf("Incorrect program: %s", e.Error())
 		} else {
+			w.WriteHeader(400)
 			_, e = w.Write(bs)
 		}
 	}
@@ -165,10 +148,8 @@ func authH(w h.ResponseWriter, r *h.Request) {
 		}
 	}
 	if e == nil {
-		var ck *h.Cookie
-		ck = &h.Cookie{Name: AuthHd, Value: js}
-		_, e = w.Write([]byte(ck.String()))
-		// { written.ck }
+		w.Header().Set(AuthHd, js)
+		// { header set }
 	}
 	writeError(w, e)
 	// { writtenError ≢ writtenCookie }

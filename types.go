@@ -11,6 +11,10 @@ type Info struct {
 	Matches []AccMatch `json:"matches"`
 }
 
+type Error struct {
+	Message string `json:"error"`
+}
+
 type Change struct {
 	Time time.Time  `json:"time"`
 	SRec []AccMatch `json:"srec"`
