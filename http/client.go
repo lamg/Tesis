@@ -14,7 +14,7 @@ import (
 
 type PortalUser struct {
 	client *h.Client
-	ck     *h.Cookie
+	jwt    string
 	auInf  string
 	index  string
 }
@@ -23,9 +23,9 @@ func NewPortalUser(url string) (p *PortalUser) {
 	cfg := &tls.Config{InsecureSkipVerify: true}
 	tr := &h.Transport{TLSClientConfig: cfg}
 	cl := &h.Client{Transport: tr}
-	ai := fmt.Sprintf("https://%s%s", url, dashP)
+
 	in := fmt.Sprintf("https://%s", url)
-	p = &PortalUser{client: cl, auInf: ai, index: in}
+	p = &PortalUser{client: cl, index: in}
 	return
 }
 
@@ -45,47 +45,19 @@ func (p *PortalUser) Auth(user, pass string) (a bool, e error) {
 	}
 	if e == nil {
 		if r.StatusCode == 200 {
-			var cs []*h.Cookie
-			cs = r.Cookies()
-			if len(cs) == 1 {
-				p.ck = cs[0]
-				//token string stored
+			//get Auth header
+			p.jwt = r.Header.Get(AuthHd)
+			//token string stored
+			if p.jwt != "" {
 				a = true
 			} else {
 				bs, e = ioutil.ReadAll(r.Body)
 				if e == nil {
-					e = fmt.Errorf("Cantidad de cookies %d ≠ 1, %s", len(cs), string(bs))
+					e = fmt.Errorf("Cabecera Auth vacía, %s", string(bs))
 				}
 			}
 		} else {
 			e = fmt.Errorf("Status = %s", r.Status)
-		}
-	}
-	return
-}
-
-func (p *PortalUser) Info() (s string, e error) {
-	var q *h.Request
-	if p.ck == nil {
-		e = fmt.Errorf("Auth failed")
-	}
-	if e == nil {
-		q, e = h.NewRequest("GET", p.index+dashP, nil)
-	}
-	if e == nil {
-		q.AddCookie(p.ck)
-		var rp *h.Response
-		//create a request with appropiate header
-		rp, e = p.client.Do(q)
-		var b []byte
-		if e == nil && rp.StatusCode == 200 {
-			b, e = ioutil.ReadAll(rp.Body)
-		} else if e == nil {
-			e = fmt.Errorf("Status = %s", rp.Status)
-		}
-		if e == nil {
-			s = string(b)
-			e = rp.Body.Close()
 		}
 	}
 	return
@@ -127,14 +99,14 @@ func (p *PortalUser) Sync() (s string, e error) {
 	b, e = json.Marshal(acs)
 	rd = bytes.NewReader(b)
 	var q *h.Request
-	if p.ck == nil {
+	if p.jwt == "" {
 		e = fmt.Errorf("Auth failed")
 	}
 	if e == nil {
 		q, e = h.NewRequest("POST", p.index+syncP, rd)
 	}
 	if e == nil {
-		q.AddCookie(p.ck)
+		q.Header.Set(AuthHd, p.jwt)
 		q.Header.Set("content-type", "application/json")
 		r, e = p.client.Do(q)
 	}

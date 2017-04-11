@@ -99,7 +99,7 @@ func indexH(w h.ResponseWriter, r *h.Request) {
 
 func writeError(w h.ResponseWriter, e error) {
 	if e != nil {
-		var in *tesis.Info
+		var in *tesis.Error
 		var bs []byte
 		in = &tesis.Error{Message: e.Error()}
 		bs, e = json.Marshal(in)
@@ -156,17 +156,15 @@ func authH(w h.ResponseWriter, r *h.Request) {
 }
 
 func parseUserName(r *h.Request, p *rsa.PublicKey) (us string, e error) {
-	var ck *h.Cookie
+	var ts string
 	var t *jwt.Token
-	ck, e = r.Cookie(AuthHd)
-	// { readCookie.ck ≡ e = nil }
-	if e == nil {
-		t, e = jwt.Parse(ck.Value,
-			func(x *jwt.Token) (a interface{}, d error) {
-				a, d = p, nil
-				return
-			})
-	}
+	ts = r.Header.Get(AuthHd)
+	// { readHeader.jwt ≡ e = nil }
+	t, e = jwt.Parse(ts,
+		func(x *jwt.Token) (a interface{}, d error) {
+			a, d = p, nil
+			return
+		})
 	// { parsedToken.t ≡ e = nil }
 	if e == nil {
 		if t.Valid {

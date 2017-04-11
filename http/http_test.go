@@ -29,11 +29,6 @@ func TestHTTPPortal(t *testing.T) {
 	if a.NotNil(t, j) {
 		t.Logf("Valid: %t", j)
 	}
-	var inf string
-	inf, e = cl.Info()
-	if a.NoError(t, e) {
-		t.Log(inf)
-	}
 
 	var s string
 	s, e = cl.Index()
