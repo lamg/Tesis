@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"log"
 	h "net/http"
-	"path"
 )
 
 const (
@@ -61,7 +60,7 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 	if e == nil {
 		h.HandleFunc(syncP, syncH)
 		h.HandleFunc(authP, authH)
-		h.HandleFunc("/", indexH)
+
 		h.ListenAndServeTLS(u, f.Cert, f.Key, nil)
 	}
 	// { started.server ≡ e = nil }
@@ -69,32 +68,6 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 		log.Print(e.Error())
 	}
 	return
-}
-
-// Handler of "/" path
-func indexH(w h.ResponseWriter, r *h.Request) {
-	var e error
-	if r.Method == h.MethodGet {
-		var file, ext string
-		file = path.Base(r.URL.Path)
-		if file == "/" {
-			file = "index"
-		}
-		ext = path.Ext(file)
-		if ext == ".js" {
-			w.Header().Set("content-type", "application/javascript")
-		} else if ext == ".css" {
-			w.Header().Set("content-type", "text/css")
-		} else if ext == "" {
-			file = file + ".html"
-			w.Header().Set("content-type", "text/html")
-		}
-		h.ServeFile(w, r, file)
-
-	} else {
-		e = fmt.Errorf("Método %s no soportado por /", r.Method)
-	}
-	writeError(w, e)
 }
 
 func writeError(w h.ResponseWriter, e error) {

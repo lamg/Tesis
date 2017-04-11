@@ -63,23 +63,6 @@ func (p *PortalUser) Auth(user, pass string) (a bool, e error) {
 	return
 }
 
-func (p *PortalUser) Index() (s string, e error) {
-	var r *h.Response
-	var b []byte
-
-	r, e = p.client.Get(p.index)
-	// { responseGet.(p.index).r ≡ e = nil }
-	if e == nil {
-		b, e = ioutil.ReadAll(r.Body)
-	}
-	// { read.(r.Body).b ≡ e = nil }
-	if e == nil {
-		s = string(b)
-	}
-	// { s = string.respGetIndex ≡ e = nil }
-	return
-}
-
 func (p *PortalUser) Sync() (s string, e error) {
 	//marshall Info to JSON and send to server
 	//to use syncH handler

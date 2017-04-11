@@ -31,10 +31,6 @@ func TestHTTPPortal(t *testing.T) {
 	}
 
 	var s string
-	s, e = cl.Index()
-	if a.NoError(t, e) {
-		t.Log(s)
-	}
 	if e == nil {
 		s, e = cl.Sync()
 	}
