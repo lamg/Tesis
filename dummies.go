@@ -4,13 +4,13 @@ import (
 	"fmt"
 )
 
-func (s *DummyManager) Candidates() (a []AccMatch, e error) {
+func (s *DummyManager) Candidates() (a []Diff, e error) {
 	a = s.cs
 	//iterate DB and filter comparing with AD
 	return
 }
 
-func (s *DummyManager) Synchronize(user string, a []AccMatch) (e error) {
+func (s *DummyManager) Synchronize(user string, a []Diff) (e error) {
 	var r []int
 	var ex bool
 	r, ex = make([]int, 0, len(a)), true
@@ -18,7 +18,7 @@ func (s *DummyManager) Synchronize(user string, a []AccMatch) (e error) {
 		var x, y int
 		x, y, ex = 0, len(s.cs), false
 		for x != y {
-			ex = EqAccMatch(&a[i], &s.cs[x])
+			ex = EqDBRecord(&a[i].DBRec, &s.cs[x].DBRec)
 			if !ex {
 				x = x + 1
 			} else {
@@ -44,22 +44,38 @@ func (d *DummyAuth) Authenticate(u, p string) (b bool) {
 }
 
 type DummyManager struct {
-	cs []AccMatch
+	cs []Diff
 }
 
 func NewDummyManager() (m *DummyManager) {
 	m = &DummyManager{
-		cs: []AccMatch{
-			AccMatch{DBId: "0", SrcIN: "8901191122"},
-			AccMatch{DBId: "1", ADId: "3", ADName: "LUIS", SrcName: "Luis", SrcDB: "ASET"},
-			AccMatch{DBId: "2", SrcIN: "9001091221"},
+		cs: []Diff{
+			Diff{
+				LDAPRec:  DBRecord{Id: "0", IN: "8901191122", Name: "LUIS"},
+				DBRec:    DBRecord{Id: "0", IN: "8901191122", Name: "Luis"},
+				Exists:   true,
+				Mismatch: true,
+				Src:      "SIGENU",
+			},
+			Diff{
+				DBRec:    DBRecord{Id: "1", IN: "9001191122", Name: "Coco"},
+				Exists:   false,
+				Mismatch: false,
+				Src:      "SIGENU",
+			},
+			Diff{
+				LDAPRec:  DBRecord{Id: "1", IN: "9001191122", Name: "Coco"},
+				Exists:   true,
+				Mismatch: false,
+				Src:      "SIGENU",
+			},
 		},
 	}
 	return
 }
 
 func (m *DummyManager) UserInfo(u string) (inf *Info, e error) {
-	var cs []AccMatch
+	var cs []Diff
 	var re []Change
 	cs, e = m.Candidates()
 	if e == nil {

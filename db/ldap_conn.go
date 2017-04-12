@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/go-ldap/ldap"
+	"github.com/lamg/tesis"
 )
 
 const IN = "in" //identity number
@@ -68,15 +69,15 @@ func Search(u string, c *ldap.Conn) (n []*ldap.EntryAttribute, e error) {
 	return
 }
 
-func GetUsers(c *ldap.Conn) (us []tesis.DBRecord, e error) {
+func (l *LDAPAuth) GetUsers() (us []tesis.DBRecord, e error) {
 	var f string
 	var a []string
 	f, a = "(&(objectClass=user))", []string{"cn",
 		"userPrincipalName", IN}
 	var n []*ldap.Entry
-	n, e = SearchFilter(f, a, c)
+	n, e = SearchFilter(f, a, l.c)
 	us = make([]tesis.DBRecord, len(n))
-	for i := range n {
+	for _, i := range n {
 		var r tesis.DBRecord
 		r = tesis.DBRecord{
 			Name: i.GetAttributeValue("cn"),
@@ -104,7 +105,7 @@ func SearchFilter(f string, ats []string, c *ldap.Conn) (n []*ldap.Entry, e erro
 		sizel, timel, tpeol, f, ats, conts)
 	r, e = c.Search(s)
 	if e == nil && len(r.Entries) == 0 {
-		e = fmt.Errorf("La búsqueda de %s falló", u)
+		e = fmt.Errorf("La búsqueda de %s falló", f)
 	} else {
 		n = r.Entries
 	}

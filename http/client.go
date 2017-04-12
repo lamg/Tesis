@@ -68,15 +68,15 @@ func (p *PortalUser) Sync() (s string, e error) {
 	//to use syncH handler
 	var r *h.Response
 	var b []byte
-	var acs []tesis.AccMatch
+	var acs []tesis.Diff
 	var rd io.Reader
-	acs = []tesis.AccMatch{
-		tesis.AccMatch{
-			DBId:    "1",
-			ADId:    "3",
-			ADName:  "LUIS",
-			SrcName: "Luis",
-			SrcDB:   "ASET",
+	acs = []tesis.Diff{
+		tesis.Diff{
+			LDAPRec:  tesis.DBRecord{Id: "0", IN: "8901191122", Name: "LUIS"},
+			DBRec:    tesis.DBRecord{Id: "0", IN: "8901191122", Name: "Luis"},
+			Exists:   true,
+			Mismatch: true,
+			Src:      "SIGENU",
 		},
 	}
 	b, e = json.Marshal(acs)

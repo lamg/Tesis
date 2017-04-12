@@ -18,8 +18,10 @@ const (
 	//Content files
 	AuthHd = "Auth"
 	//paths
-	syncP = "/api/sync"
-	authP = "/api/auth"
+	nameP = "/api/uinf"
+	recrP = "/api/recr"
+	propP = "/api/prop"
+	pendP = "/api/pend"
 )
 
 var (
@@ -174,7 +176,7 @@ func syncPost(w h.ResponseWriter, rc io.Reader, us string) (e error) {
 	// { r.Method = h.MethodPost ∧ validJWT ≡ e = nil }
 	bs, e = ioutil.ReadAll(rc)
 	// { read.bs ≡ e = nil }
-	var acs []tesis.AccMatch
+	var acs []tesis.Diff
 	if e == nil {
 		// { read.bs }
 		e = json.Unmarshal(bs, &acs)
@@ -183,17 +185,7 @@ func syncPost(w h.ResponseWriter, rc io.Reader, us string) (e error) {
 	if e == nil {
 		e = db.Synchronize(us, acs)
 	}
-	var cs []tesis.AccMatch
-	if e == nil {
-		cs, e = db.Candidates()
-	}
-	var rs []byte
-	if e == nil {
-		rs, e = json.Marshal(cs)
-	}
-	if e == nil {
-		_, e = w.Write(rs)
-	}
+	writeError(w, e)
 	// { synchronized.acs ≡ e = nil }
 	return
 }

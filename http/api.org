@@ -8,49 +8,78 @@
 	AuthHeader: HTTP header with value "Auth" and JWT as value
 	Credentials: JSON {"user":username, "pass":password}
 	Error: JSON {"error":message}
-	AccMatch: JSON {
-    "dbId":DatabaseId, 
-    "adId":ActiveDirectoryId, 
-    "srcIN":SourceIdentityNumber, 
-    "srcName":SourceName, 
-    "srcDB":SourceDatabaseName,
+	Diff: JSON {
+    "ldapRec":DBRecord,
+    "dbRec":DBRecord,
+    "src":string,
+    "exists":bool, // exists in LDAP. True means 
+		// action must be determined by the value of 
+		// "mismatch". False means addition.
+    "mismatch":bool,// true means update, 
+		// false means delete.
   }
+	DBRecord: JSON {
+	  "id":string,
+		"in":string,
+		"name":string,
+	}
 	Change: JSON {
 	  "time": DateTime,
-	  "srec": []AccMatch, //successfuly synchronized
-		"frec": []AccMatch, //failed to synchronize
+	  "srec": []Diff, //successfuly synchronized
+		"frec": []Diff, //failed to synchronize
 	}
 	Info: JSON { 
-    "name": username,
+    "userInfo": UsrInf,
 		"changeLog": []Change,
-	  "matches": []AccMatch,
+		"proposed": []Diff,
+	  "pending": []Diff,
   }
+	PageC: JSON {
+	  "total": Nat,
+		"pageN": Nat,
+		"changeP": []Change,
+	}
+	PageD: JSON {
+	  "total": Nat,
+		"pageN": Nat,
+		"diffP": []Diff,
+	}
+	UsrInf: JSON {
+	  "name": string,
+	}
 	#+END_SRC
 	
 | Suffix | Request method-AuthHeader-body | Response code-AuthHeader-body |
-|        |                           |                           |
-|--------+---------------------------+---------------------------|
 |        | <25>                      | <25>                      |
+|--------+---------------------------+---------------------------|
 | /auth  | POST-empty-Credentials    | if ok → 200-JWT-empty   ¬ok 400-empty-error fi |
-| /sync  | POST-JWT-[]AccMatch       | if ok → 200-empty-empty   ¬ok → 400-empty-error fi |
-| /sync  | GET-JWT-empty             | if ok → 200-empty-Info   ¬ok → 400-empty-error fi |
+| /uinf  | GET-JWT-empty             | if ok → 200-empty-UsrInf   ¬ok → 400-empty-error fi |
+| /recr  | GET-JWT-PageN             | if ok → 200-empty-PageC   ¬ok → 400-empty-Error fi |
+| /prop  | POST-JWT-[]Diff           | if ok → 200-empty-empty   ¬ok → 400-empty-error fi |
+| /prop  | GET-JWT-PageN             | if ok → 200-empty-PageD   400-empty-Error fi |
+| /pend  | GET-JWT-PageN             | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
 
 
 - The frontend is the following multiprogram
 
  #+BEGIN_SRC
- var j:JWT, e:Error, i:Info;
+ var j:JWT, e:Error, u:UsrInf, c:PageC,
+ pr:PageD, pe:PageD;
  j, e := PostCredentialsToAuth()
- ;if e = nil → i, e := GetWithJWTToSync(j) fi
- ;if e = nil → Show(i)
-   e ≠ nil → Show(e)
+ ;if e = nil → u, e := GetWithJWTToUinf(j) fi
+ ;if e = nil → c, e := GetWithJWTToRecr(j, 0) fi
+ ;if e = nil → pr, e := GetWithJWTToProp(j, 0) fi
+ ;if e = nil → pe, e := GetWithJWTToPend(j, 0) fi
+ ;if e = nil → Show(u);Show(c);Show(pr);Show(pe)
+     e ≠ nil → Show(e)
  fi
+ { showedInfo ≡ e = nil }
  #+END_SRC
  
  #+BEGIN_SRC
- con s:[]AccMatch, j:JWT;
+ con s:[]Diff, j:JWT;
  var e:Error;
- e := PostWithCookieToSync(j, s)
+ e := PostWithJWTToProp(j, s)
  if e ≠ nil → Show(e) fi
  #+END_SRC
  

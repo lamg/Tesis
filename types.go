@@ -6,9 +6,14 @@ import (
 )
 
 type Info struct {
-	Name    string     `json:"name"`
-	Record  []Change   `json:"changeLog"`
-	Matches []AccMatch `json:"matches"`
+	UsrInf   *UserInfo `json:"userInfo"`
+	Record   []Change  `json:"changeLog"`
+	Proposed []Diff    `json:"proposed"`
+	Pending  []Diff    `json:"pending"`
+}
+
+type UserInfo struct {
+	Name string `json:"name"`
 }
 
 type Error struct {
@@ -16,9 +21,9 @@ type Error struct {
 }
 
 type Change struct {
-	Time time.Time  `json:"time"`
-	SRec []AccMatch `json:"srec"`
-	FRec []AccMatch `json:"frec"`
+	Time time.Time `json:"time"`
+	SRec []Diff    `json:"srec"`
+	FRec []Diff    `json:"frec"`
 }
 
 type Credentials struct {
@@ -44,35 +49,30 @@ type AccId string   //account id
 type SStatus string //synchronization status
 
 // AccMatch ≡ MissingIDMatch ∨ DiffNamesMatch
-type AccMatch struct {
-	DBId    AccId
-	ADId    string
-	SrcIN   string
-	ADName  string
-	SrcName string
-	SrcDB   string
+type Diff struct {
+	LDAPRec, DBRec   DBRecord
+	Src              string
+	Exists, Mismatch bool
 }
 
 type DBRecord struct {
-	Id   AccId  //database key field
+	Id   string //database key field
 	IN   string //identity number
 	Name string //person name
 }
 
 type Synchronizer interface {
 	//synchronize a list of accounts
-	Synchronize(string, []AccMatch) error
+	Synchronize(string, []Diff) error
 
 	//get the candidates for synchronization (who and why?)
-	Candidates() ([]AccMatch, error)
+	Candidates() ([]Diff, error)
 }
 
 // isCandidate ≡ ¬hasId ∨ existsSimilar
 // existsSimilar ≡ toLowerEq ∨ unAccentEq
 
-func EqAccMatch(a, b *AccMatch) (r bool) {
-	r = a.ADId == b.ADId && a.ADName == b.ADName &&
-		a.DBId == b.DBId && a.SrcDB == b.SrcDB &&
-		a.SrcIN == b.SrcIN && a.SrcName == b.SrcName
+func EqDBRecord(a, b *DBRecord) (r bool) {
+	r = a.Id == b.Id
 	return
 }
