@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/lamg/tesis"
-	"io"
 	"io/ioutil"
 	"log"
 	h "net/http"
@@ -18,7 +17,8 @@ const (
 	//Content files
 	AuthHd = "Auth"
 	//paths
-	nameP = "/api/uinf"
+	authP = "/api/auth"
+	uinfP = "/api/uinf"
 	recrP = "/api/recr"
 	propP = "/api/prop"
 	pendP = "/api/pend"
@@ -28,7 +28,6 @@ var (
 	notFound = []byte("Archivo no encontrado")
 	notAuth  = []byte("No autenticado")
 	pkey     *rsa.PrivateKey
-	auth     tesis.Authenticator
 	db       tesis.DBManager
 )
 
@@ -39,18 +38,17 @@ type ServFS struct {
 // Creates a new instance of HTTPPortal and starts serving.
 //  u: URL to serve
 //  a: User authentication interface
-//  q: Database manager interface
+//  d: Database manager interface
 //  f: Files needed to run the server
-//  db: []AccMatch,!
 //  h.DefaultServer: h.Server,!
-func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServFS) {
+func ListenAndServe(u string, d tesis.DBManager, f *ServFS) {
 	var bs []byte
 	var e error
 	h.DefaultClient.Transport = &h.Transport{
 		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) h.RoundTripper),
 	}
 	// { disabled.HTTP2 }
-	auth, db = a, d
+	db = d
 	// { auth,db,fs:initialized }
 	bs, e = ioutil.ReadFile(f.Key)
 	// { loaded.key.bs ≡ e = nil }
@@ -60,9 +58,11 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 	}
 	// { parsed.pkey ≡ e = nil }
 	if e == nil {
-		h.HandleFunc(syncP, syncH)
 		h.HandleFunc(authP, authH)
-
+		h.HandleFunc(uinfP, uinfH)
+		h.HandleFunc(recrP, recrH)
+		h.HandleFunc(propP, propH)
+		h.HandleFunc(pendP, pendH)
 		h.ListenAndServeTLS(u, f.Cert, f.Key, nil)
 	}
 	// { started.server ≡ e = nil }
@@ -72,35 +72,16 @@ func ListenAndServe(u string, a tesis.Authenticator, d tesis.DBManager, f *ServF
 	return
 }
 
-func writeError(w h.ResponseWriter, e error) {
-	if e != nil {
-		var in *tesis.Error
-		var bs []byte
-		in = &tesis.Error{Message: e.Error()}
-		bs, e = json.Marshal(in)
-		if e != nil {
-			// precondition of json.Marshal is false
-			// i.e. program is incorrect
-			log.Panicf("Incorrect program: %s", e.Error())
-		} else {
-			w.WriteHeader(400)
-			_, e = w.Write(bs)
-		}
-	}
-	// { writtenError ≡ e ≠ nil }
-	if e != nil {
-		log.Print(e.Error())
-	}
-}
-
+// { db ≠ nil ∧ pkey ≠ nil }
 func authH(w h.ResponseWriter, r *h.Request) {
 	var e error
 	var cr *tesis.Credentials
 	var bs []byte
 	if r.Method == h.MethodPost {
 		bs, e = ioutil.ReadAll(r.Body)
+		r.Body.Close()
 	} else {
-		e = fmt.Errorf("Method %s not supported by /a/auth", r.Method)
+		e = errUnsMeth(r.Method, authP)
 	}
 	if e == nil {
 		cr = new(tesis.Credentials)
@@ -109,7 +90,7 @@ func authH(w h.ResponseWriter, r *h.Request) {
 	var js string
 	if e == nil {
 		var v bool
-		v = auth.Authenticate(cr.User, cr.Pass)
+		v = db.Authenticate(cr.User, cr.Pass)
 		// { v ≡ registered.user }
 		if v {
 			var u *tesis.User
@@ -127,7 +108,125 @@ func authH(w h.ResponseWriter, r *h.Request) {
 		// { header set }
 	}
 	writeError(w, e)
-	// { writtenError ≢ writtenCookie }
+	// { writtenError ≢ writtenHeader }
+}
+
+// { pkey ≠ nil ∧ db ≠ nil }
+func uinfH(w h.ResponseWriter, r *h.Request) {
+	var us string
+	var e error
+	if r.Method == h.MethodGet {
+		us, e = parseUserName(r, &pkey.PublicKey)
+	} else {
+		e = errUnsMeth(r.Method, uinfP)
+	}
+	// { supportedMethod ≡ e = nil }
+	var ui *tesis.UserInfo
+	if e == nil {
+		ui, e = db.UserInfo(us)
+	}
+	// { infoLoaded ≡ e = nil }
+	var bs []byte
+	if e == nil {
+		bs, e = json.Marshal(ui)
+	}
+	// { infoMarshaled ≡ e = nil}
+	if e == nil {
+		_, e = w.Write(bs)
+	}
+	// { infoWritten ≡ e = nil }
+	writeError(w, e)
+}
+
+func recrH(w h.ResponseWriter, r *h.Request) {
+	var e error
+	if r.Method == h.MethodPost {
+	} else {
+		e = errUnsMeth(r.Method, recrP)
+	}
+	var us string
+	if e == nil {
+		us, e = parseUserName(r, &pkey.PublicKey)
+	}
+	var bs []byte
+	if e == nil {
+		bs, e = ioutil.ReadAll(r.Body)
+		r.Body.Close()
+	}
+	var pn *tesis.PageN
+	if e == nil {
+		e = json.Unmarshal(bs, pn)
+	}
+	var pc *tesis.PageC
+	if e == nil {
+		pc, e = db.Record(us, pn.PageN)
+	}
+	var rs []byte
+	if e == nil {
+		rs, e = json.Marshal(pc)
+	}
+	if e == nil {
+		_, e = w.Write(rs)
+	}
+	writeError(w, e)
+}
+
+func propH(w h.ResponseWriter, r *h.Request) {
+	var us string
+	var e error
+	if r.Method == h.MethodPatch {
+		us, e = parseUserName(r, &pkey.PublicKey)
+	} else {
+		e = errUnsMeth(r.Method, propP)
+	}
+	var bs []byte
+	if e == nil {
+		bs, e = ioutil.ReadAll(r.Body)
+		r.Body.Close()
+	}
+	var sel []tesis.Diff
+	if e == nil {
+		e = json.Unmarshal(bs, sel)
+	}
+	if e == nil {
+		e = db.Propose(us, sel)
+	}
+	writeError(w, e)
+}
+
+func pendH(w h.ResponseWriter, r *h.Request) {
+	var e error
+	var us string
+	us, e = parseUserName(r, &pkey.PublicKey)
+	var bs []byte
+	if r.Method == h.MethodPost {
+		bs, e = ioutil.ReadAll(r.Body)
+		r.Body.Close()
+	} else {
+		e = errUnsMeth(r.Method, pendP)
+	}
+	var pn *tesis.PageN
+	if e == nil {
+		e = json.Unmarshal(bs, pn)
+	}
+	var pd *tesis.PageD
+	if e == nil {
+		pd, e = db.Pending(us, pn.PageN)
+	}
+	var rs []byte
+	if e == nil {
+		rs, e = json.Marshal(pd)
+	}
+	if e == nil {
+		_, e = w.Write(rs)
+	}
+	writeError(w, e)
+}
+
+func errUnsMeth(method, path string) (e error) {
+	e = fmt.Errorf("Método %s no soportado por %s",
+		method, path)
+	return
 }
 
 func parseUserName(r *h.Request, p *rsa.PublicKey) (us string, e error) {
@@ -155,61 +254,25 @@ func parseUserName(r *h.Request, p *rsa.PublicKey) (us string, e error) {
 	return
 }
 
-func syncH(w h.ResponseWriter, r *h.Request) {
-	var e error
-	var us string
-	us, e = parseUserName(r, &pkey.PublicKey)
-	if e == nil {
-		if r.Method == h.MethodPost {
-			e = syncPost(w, r.Body, us)
-		} else if r.Method == h.MethodGet {
-			e = syncGet(w, us)
+func writeError(w h.ResponseWriter, e error) {
+	if e != nil {
+		var in *tesis.Error
+		var bs []byte
+		in = &tesis.Error{Message: e.Error()}
+		bs, e = json.Marshal(in)
+		if e != nil {
+			// precondition of json.Marshal is false
+			// i.e. program is incorrect
+			log.Panicf("Incorrect program: %s", e.Error())
 		} else {
-			e = fmt.Errorf("%s no soportado en /sync", r.Method)
+			w.WriteHeader(400)
+			_, e = w.Write(bs)
 		}
 	}
-	writeError(w, e)
-}
-
-func syncPost(w h.ResponseWriter, rc io.Reader, us string) (e error) {
-	var bs []byte
-	// { r.Method = h.MethodPost ∧ validJWT ≡ e = nil }
-	bs, e = ioutil.ReadAll(rc)
-	// { read.bs ≡ e = nil }
-	var acs []tesis.Diff
-	if e == nil {
-		// { read.bs }
-		e = json.Unmarshal(bs, &acs)
+	// { writtenError ≡ e ≠ nil }
+	if e != nil {
+		log.Print(e.Error())
 	}
-	// { jsonRep.bs.acs ≡ e = nil }
-	if e == nil {
-		e = db.Synchronize(us, acs)
-	}
-	writeError(w, e)
-	// { synchronized.acs ≡ e = nil }
-	return
-}
-
-func syncGet(w h.ResponseWriter, user string) (e error) {
-	// globals
-	// db: DBManager,?
-	// end
-	var inf *tesis.Info
-	var bs []byte
-	inf, e = db.UserInfo(user)
-	// { loaded.inf ≡ e = nil }
-	if e == nil {
-		// { loaded.inf }
-		bs, e = json.Marshal(inf)
-		// { written.inf }
-	}
-	if e == nil {
-		w.Header().Set("content-type", "application/json")
-		_, e = w.Write(bs)
-		//sent relevant information as JSON, according user
-	}
-	// { written.inf ≡ e = nil }
-	return
 }
 
 /*

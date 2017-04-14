@@ -4,47 +4,9 @@ import (
 	"fmt"
 )
 
-func (s *DummyManager) Candidates() (a []Diff, e error) {
-	a = s.cs
-	//iterate DB and filter comparing with AD
-	return
-}
-
-func (s *DummyManager) Synchronize(user string, a []Diff) (e error) {
-	var r []int
-	var ex bool
-	r, ex = make([]int, 0, len(a)), true
-	for i := 0; ex && i != len(a); i++ {
-		var x, y int
-		x, y, ex = 0, len(s.cs), false
-		for x != y {
-			ex = EqDBRecord(&a[i].DBRec, &s.cs[x].DBRec)
-			if !ex {
-				x = x + 1
-			} else {
-				x, r = y, append(r, x)
-			}
-		}
-		if !ex {
-			e = fmt.Errorf("Elemento %v no pertenece a candidatos a ser sincronizados", a[i])
-		}
-	}
-	for i, _ := range r {
-		s.cs = append(s.cs[:r[i]], s.cs[r[i]+1:]...)
-	}
-	return
-}
-
-type DummyAuth struct {
-}
-
-func (d *DummyAuth) Authenticate(u, p string) (b bool) {
-	b = u == p
-	return
-}
-
 type DummyManager struct {
 	cs []Diff
+	pr []Diff
 }
 
 func NewDummyManager() (m *DummyManager) {
@@ -70,18 +32,74 @@ func NewDummyManager() (m *DummyManager) {
 				Src:      "SIGENU",
 			},
 		},
+		pr: make([]Diff, 0),
 	}
 	return
 }
 
-func (m *DummyManager) UserInfo(u string) (inf *Info, e error) {
-	var cs []Diff
-	var re []Change
-	cs, e = m.Candidates()
-	if e == nil {
-		re = make([]Change, 0)
-		inf = &Info{Name: u, Matches: cs, Record: re}
+func (m *DummyManager) UserInfo(u string) (inf *UserInfo, e error) {
+	inf = &UserInfo{Name: u}
+	return
+}
+
+func (d *DummyManager) Authenticate(u, p string) (b bool) {
+	b = u == p
+	return
+}
+
+func (d *DummyManager) Record(u string, p int) (c *PageC, e error) {
+	c = new(PageC)
+	return
+}
+
+func (d *DummyManager) Propose(u string, p []Diff) (e error) {
+	d.pr = append(d.pr, p...)
+	return
+}
+
+func (d *DummyManager) Pending(u string, p int) (c *PageD, e error) {
+	c = &PageD{Total: 1, PageN: 1, DiffP: d.pr}
+	return
+}
+
+func (d *DummyManager) Synchronize() (e error) {
+	d.cs, e = RmEq(d.cs, d.pr)
+	//save removed to record
+	return
+}
+
+func RmEq(l, a []Diff) (p []Diff, e error) {
+	var r []int
+	var ex bool
+	r, ex = make([]int, 0, len(a)), true
+	for i := 0; ex && i != len(a); i++ {
+		var x, y int
+		x, y, ex = 0, len(l), false
+		for x != y {
+			ex = EqDBRecord(&a[i].DBRec, &l[x].DBRec)
+			if !ex {
+				x = x + 1
+			} else {
+				x, r = y, append(r, x)
+			}
+		}
+		if !ex {
+			e = fmt.Errorf("Elemento %v no pertenece a candidatos a ser sincronizados", a[i])
+		}
 	}
-	//TODO populate inf with more meaningful information
+	// { r contains the indexes in l of all elements in a
+	// ≢ exists an element in a not in l }
+	p = make([]Diff, 0, len(a))
+	var c int
+	c = 0
+	for i := 0; e == nil && i != len(l); i++ {
+		if c != len(r) && i == r[c] {
+			c++
+		} else {
+			p = append(p, l[i])
+		}
+	}
+	// { p contains elements in l not in a ≢
+	// exists an element in a not in l }
 	return
 }

@@ -1,5 +1,6 @@
 * HTTP REST API specification
 - HTTPS server listening in 10443
+	- Done in ~http/server.go~
 - The API prefix is ~/api~
 - Correspondence between suffix, request method-body, and 
   response code-body; with the following definitions
@@ -47,31 +48,45 @@
 	UsrInf: JSON {
 	  "name": string,
 	}
+	PageN: JSON {
+	  "pageN": Nat,
+	}
 	#+END_SRC
 	
 | Suffix | Request method-AuthHeader-body | Response code-AuthHeader-body |
-|        | <25>                      | <25>                      |
-|--------+---------------------------+---------------------------|
-| /auth  | POST-empty-Credentials    | if ok → 200-JWT-empty   ¬ok 400-empty-error fi |
+|        | <25>                      | <26>                       |
+|--------+---------------------------+----------------------------|
+| /auth  | POST-empty-Credentials    | if ok → 200-JWT-empt   ¬ok 400-empty-error fi |
 | /uinf  | GET-JWT-empty             | if ok → 200-empty-UsrInf   ¬ok → 400-empty-error fi |
-| /recr  | GET-JWT-PageN             | if ok → 200-empty-PageC   ¬ok → 400-empty-Error fi |
-| /prop  | POST-JWT-[]Diff           | if ok → 200-empty-empty   ¬ok → 400-empty-error fi |
-| /prop  | GET-JWT-PageN             | if ok → 200-empty-PageD   400-empty-Error fi |
-| /pend  | GET-JWT-PageN             | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
+| /recr  | POST-JWT-PageN            | if ok → 200-empty-PageC   ¬ok → 400-empty-Error fi |
+| /prop  | PATCH-JWT-[]Diff          | if ok → 200-empty-empty   ¬ok → 400-empty-error fi |
+| /pend  | POST-JWT-PageN            | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
+
 
 
 - The frontend is the following multiprogram
-
+	
  #+BEGIN_SRC
  var j:JWT, e:Error, u:UsrInf, c:PageC,
- pr:PageD, pe:PageD;
+ pr:PageD, pe:PageD, sel: []Diff;
  j, e := PostCredentialsToAuth()
- ;if e = nil → u, e := GetWithJWTToUinf(j) fi
- ;if e = nil → c, e := GetWithJWTToRecr(j, 0) fi
- ;if e = nil → pr, e := GetWithJWTToProp(j, 0) fi
- ;if e = nil → pe, e := GetWithJWTToPend(j, 0) fi
+ ;if e = nil → u, e := GetWithJWTToUinf(j) 
+   e ≠ nil → skip
+ fi
+ ;if e = nil → c, e := PostWithJWTToRecr(j, 0)
+   e ≠ nil → skip
+ fi
+ ;if e = nil → e := PatchWithJWTToProp(j, sel)
+   e ≠ nil → skip
+ fi
+ ;if e = nil → pr, e := PostWithJWTToProp(j, 0)
+   e ≠ nil → skip
+ fi
+ ;if e = nil → pe, e := GetWithJWTToPend(j, 0)
+   e ≠ nil → skip
+ fi
  ;if e = nil → Show(u);Show(c);Show(pr);Show(pe)
-     e ≠ nil → Show(e)
+   e ≠ nil → Show(e)
  fi
  { showedInfo ≡ e = nil }
  #+END_SRC
@@ -83,3 +98,15 @@
  if e ≠ nil → Show(e) fi
  #+END_SRC
  
+
+* Program storage interface
+	The program stores information regarding the
+	user like his name and its activity.
+	
+	The past activity is a list of changes, i.e. of records synchronized
+	and time of synchronization.  It is also a list of proposed
+	changes. Finally the present activity is a list of records the
+	system has matched for the user to propose.
+	
+	The following interface represents the storage
+	~UserInfo ∧ Record ∧ Proposed ∧ Pending~

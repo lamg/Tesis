@@ -5,11 +5,20 @@ import (
 	"time"
 )
 
-type Info struct {
-	UsrInf   *UserInfo `json:"userInfo"`
-	Record   []Change  `json:"changeLog"`
-	Proposed []Diff    `json:"proposed"`
-	Pending  []Diff    `json:"pending"`
+type PageN struct {
+	PageN int `json:"pageN"`
+}
+
+type PageC struct {
+	Total   int      `json:"total"`
+	PageN   int      `json:"pageN"`
+	ChangeP []Change `json:"changeP"`
+}
+
+type PageD struct {
+	Total int    `json:"total"`
+	PageN int    `json:"pageN"`
+	DiffP []Diff `json:"diffP"`
 }
 
 type UserInfo struct {
@@ -36,19 +45,14 @@ type User struct {
 	jwt.StandardClaims
 }
 
-type Authenticator interface {
-	Authenticate(user, password string) bool
-}
-
 type DBManager interface {
-	UserInfo(string) (*Info, error)
-	Synchronizer
+	Authenticate(user, password string) bool
+	UserInfo(string) (*UserInfo, error)
+	Record(string, int) (*PageC, error)
+	Propose(string, []Diff) error
+	Pending(string, int) (*PageD, error)
 }
 
-type AccId string   //account id
-type SStatus string //synchronization status
-
-// AccMatch ≡ MissingIDMatch ∨ DiffNamesMatch
 type Diff struct {
 	LDAPRec, DBRec   DBRecord
 	Src              string
@@ -59,14 +63,6 @@ type DBRecord struct {
 	Id   string //database key field
 	IN   string //identity number
 	Name string //person name
-}
-
-type Synchronizer interface {
-	//synchronize a list of accounts
-	Synchronize(string, []Diff) error
-
-	//get the candidates for synchronization (who and why?)
-	Candidates() ([]Diff, error)
 }
 
 // isCandidate ≡ ¬hasId ∨ existsSimilar
