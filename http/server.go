@@ -186,7 +186,7 @@ func propH(w h.ResponseWriter, r *h.Request) {
 	}
 	var sel []tesis.Diff
 	if e == nil {
-		e = json.Unmarshal(bs, sel)
+		e = json.Unmarshal(bs, &sel)
 	}
 	if e == nil {
 		e = db.Propose(us, sel)
@@ -265,7 +265,7 @@ func writeError(w h.ResponseWriter, e error) {
 			// i.e. program is incorrect
 			log.Panicf("Incorrect program: %s", e.Error())
 		} else {
-			w.WriteHeader(400)
+			w.WriteHeader(h.StatusBadRequest)
 			_, e = w.Write(bs)
 		}
 	}

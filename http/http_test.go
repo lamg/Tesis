@@ -101,6 +101,42 @@ func TestRecr(t *testing.T) {
 	}
 }
 
+func TestProp(t *testing.T) {
+	var e error
+	var bs []byte
+	if a.NoError(t, ke) {
+		var ds []tesis.Diff
+		ds = []tesis.Diff{
+			tesis.Diff{
+				LDAPRec:  tesis.DBRecord{Id: "0", IN: "8901191122", Name: "LUIS"},
+				DBRec:    tesis.DBRecord{Id: "0", IN: "8901191122", Name: "Luis"},
+				Exists:   true,
+				Mismatch: true,
+				Src:      "SIGENU",
+			},
+		}
+		bs, e = json.Marshal(ds)
+	}
+	var q *http.Request
+	if a.NoError(t, e) {
+		var rd io.Reader
+		rd = bytes.NewReader(bs)
+		q, e = http.NewRequest(http.MethodPatch, "", rd)
+	}
+	var r *h.ResponseRecorder
+	if a.NoError(t, e) {
+		r = h.NewRecorder()
+		q.Header.Add(AuthHd, j)
+		propH(r, q)
+	}
+	a.True(t, r.Code == http.StatusOK && r.Body.Len() == 0,
+		"r=%v", r)
+}
+
+func TestPend(t *testing.T) {
+
+}
+
 func ProcRes(r *h.ResponseRecorder, v interface{}) (e error) {
 	if r.Code == http.StatusOK {
 		e = json.Unmarshal(r.Body.Bytes(), v)
@@ -114,5 +150,8 @@ func ProcRes(r *h.ResponseRecorder, v interface{}) (e error) {
 	} else {
 		e = fmt.Errorf("Unknown code %d", r.Code)
 	}
+	// { v is the JSON value when http.StatusOK
+	// ≡ e = nil ≢ e has msg sent when http.StatusBadRequest
+	// ∨ e is unknown code error}
 	return
 }
