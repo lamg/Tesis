@@ -155,6 +155,7 @@ func recrH(w h.ResponseWriter, r *h.Request) {
 	}
 	var pn *tesis.PageN
 	if e == nil {
+		pn = new(tesis.PageN)
 		e = json.Unmarshal(bs, pn)
 	}
 	var pc *tesis.PageC
@@ -207,6 +208,7 @@ func pendH(w h.ResponseWriter, r *h.Request) {
 	}
 	var pn *tesis.PageN
 	if e == nil {
+		pn = new(tesis.PageN)
 		e = json.Unmarshal(bs, pn)
 	}
 	var pd *tesis.PageD

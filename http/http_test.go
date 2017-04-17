@@ -15,26 +15,27 @@ import (
 )
 
 var j string //json web token
-var ke error
+var local = "http://localhost"
 
 func TestA(t *testing.T) {
 	var e error
 	var bs []byte
 	db = &tesis.DummyManager{}
-	bs, ke = ioutil.ReadFile("key.pem")
+	bs, e = ioutil.ReadFile("key.pem")
 	// { loaded.key.bs ≡ e = nil }
 	if a.NoError(t, e) {
 		// { loaded.key.bs }
-		pkey, ke = jwt.ParseRSAPrivateKeyFromPEM(bs)
+		pkey, e = jwt.ParseRSAPrivateKeyFromPEM(bs)
 	}
-	a.NoError(t, ke)
+	a.NoError(t, e)
 }
 
 func TestAuth(t *testing.T) {
 	var e error
 	var r *h.ResponseRecorder
 	var bs []byte
-	if a.NoError(t, ke) {
+	e = errPkey()
+	if a.NoError(t, e) {
 		var cr *tesis.Credentials
 		r = h.NewRecorder()
 		cr = &tesis.Credentials{"a", "a"}
@@ -44,20 +45,52 @@ func TestAuth(t *testing.T) {
 	if a.NoError(t, e) {
 		var rd io.Reader
 		rd = bytes.NewReader(bs)
-		q, e = http.NewRequest("POST", "", rd)
-	}
-	if a.NoError(t, e) {
+		q = h.NewRequest(http.MethodPost, local, rd)
 		authH(r, q)
 		j = r.Header().Get(AuthHd)
 	}
-	a.NotEmpty(t, j, "r:%v", r)
+	var b, c bool
+	b, c = j == "", r != nil && (r.Code == http.StatusBadRequest)
+	a.False(t, b || c)
+}
+
+func TestAuth0(t *testing.T) {
+	var e error
+	var bs []byte
+	e = errPkey()
+	if a.NoError(t, e) {
+		var cr *tesis.Credentials
+		cr = &tesis.Credentials{"a", "b"}
+		bs, e = json.Marshal(cr)
+	}
+	var rd io.Reader
+	var er *tesis.Error
+	if a.NoError(t, e) {
+		var q *http.Request
+		var r *h.ResponseRecorder
+		rd, er, r = bytes.NewReader(bs), new(tesis.Error),
+			h.NewRecorder()
+		q = h.NewRequest(http.MethodPost, local, rd)
+		authH(r, q)
+		e = json.Unmarshal(r.Body.Bytes(), er)
+	}
+	a.NoError(t, e)
+}
+
+func TestAuth1(t *testing.T) {
+	var e error
+	e = errPkey()
+	if a.NoError(t, e) {
+		a.HTTPError(t, authH, http.MethodGet, local, nil)
+	}
 }
 
 func TestUinf(t *testing.T) {
-	var q *http.Request
 	var e error
-	if a.NoError(t, ke) {
-		q, e = http.NewRequest("GET", "", nil)
+	var q *http.Request
+	e = errAuth()
+	if a.NoError(t, e) {
+		q, e = http.NewRequest(http.MethodGet, "", nil)
 	}
 	var r *h.ResponseRecorder
 	if a.NoError(t, e) {
@@ -66,20 +99,31 @@ func TestUinf(t *testing.T) {
 		uinfH(r, q)
 	}
 	var ui *tesis.UserInfo
-	ui = new(tesis.UserInfo)
-	e = ProcRes(r, ui)
-	if a.NoError(t, e, "r=%s", string(r.Body.Bytes())) {
-		t.Log(ui)
+	if a.NoError(t, e) {
+		ui = new(tesis.UserInfo)
+		e = procRes(r, ui)
+	}
+	a.NoError(t, e)
+}
+
+func TestUinf0(t *testing.T) {
+	var e error
+	e = errAuth()
+	if a.NoError(t, e) {
+		a.HTTPError(t, uinfH, http.MethodConnect, local, nil)
 	}
 }
 
 func TestRecr(t *testing.T) {
 	var e error
 	var bs []byte
-	if a.NoError(t, ke) {
+	e = errAuth()
+	if a.NoError(t, e) {
 		var pn *tesis.PageN
 		pn = &tesis.PageN{PageN: 0}
 		bs, e = json.Marshal(pn)
+	} else {
+		e = fmt.Errorf("Auth failed %s", t.Name())
 	}
 	var q *http.Request
 	if a.NoError(t, e) {
@@ -88,23 +132,30 @@ func TestRecr(t *testing.T) {
 		q, e = http.NewRequest("POST", "", rd)
 	}
 	var r *h.ResponseRecorder
+	var pc *tesis.PageC
 	if a.NoError(t, e) {
 		r = h.NewRecorder()
 		q.Header.Add(AuthHd, j)
 		recrH(r, q)
+		pc = new(tesis.PageC)
+		e = procRes(r, pc)
 	}
-	var pc *tesis.PageC
-	pc = new(tesis.PageC)
-	e = ProcRes(r, pc)
+	a.NoError(t, e)
+}
+
+func TestRecr0(t *testing.T) {
+	var e error
+	e = errAuth()
 	if a.NoError(t, e) {
-		t.Log(pc)
+		a.HTTPError(t, recrH, http.MethodConnect, local, nil)
 	}
 }
 
 func TestProp(t *testing.T) {
 	var e error
 	var bs []byte
-	if a.NoError(t, ke) {
+	e = errAuth()
+	if a.NoError(t, e) {
 		var ds []tesis.Diff
 		ds = []tesis.Diff{
 			tesis.Diff{
@@ -116,6 +167,8 @@ func TestProp(t *testing.T) {
 			},
 		}
 		bs, e = json.Marshal(ds)
+	} else {
+		e = fmt.Errorf("Auth failed %s", t.Name())
 	}
 	var q *http.Request
 	if a.NoError(t, e) {
@@ -129,22 +182,60 @@ func TestProp(t *testing.T) {
 		q.Header.Add(AuthHd, j)
 		propH(r, q)
 	}
-	a.True(t, r.Code == http.StatusOK && r.Body.Len() == 0,
-		"r=%v", r)
+	a.True(t, e == nil &&
+		r.Code == http.StatusOK &&
+		r.Body.Len() == 0)
+}
+
+func TestProp0(t *testing.T) {
+	var e error
+	e = errAuth()
+	if a.NoError(t, e) {
+		a.HTTPError(t, propH, http.MethodConnect, local, nil)
+	}
 }
 
 func TestPend(t *testing.T) {
-
+	var e error
+	var bs []byte
+	e = errAuth()
+	if a.NoError(t, e) {
+		var pn *tesis.PageN
+		pn = &tesis.PageN{PageN: 0}
+		bs, e = json.Marshal(pn)
+	}
+	var q *http.Request
+	if a.NoError(t, e) {
+		var rd io.Reader
+		rd = bytes.NewReader(bs)
+		q, e = http.NewRequest(http.MethodPost, "", rd)
+	}
+	var r *h.ResponseRecorder
+	var pd *tesis.PageD
+	if a.NoError(t, e) {
+		r, pd = h.NewRecorder(), new(tesis.PageD)
+		pendH(r, q)
+		e = procRes(r, pd)
+	}
+	a.NoError(t, e)
 }
 
-func ProcRes(r *h.ResponseRecorder, v interface{}) (e error) {
+func TestPend0(t *testing.T) {
+	var e error
+	e = errAuth()
+	if a.NoError(t, e) {
+		a.HTTPError(t, pendH, http.MethodConnect, local, nil)
+	}
+}
+
+func procRes(r *h.ResponseRecorder, v interface{}) (e error) {
 	if r.Code == http.StatusOK {
 		e = json.Unmarshal(r.Body.Bytes(), v)
 	} else if r.Code == http.StatusBadRequest {
 		var er *tesis.Error
-		var eu error
-		eu = json.Unmarshal(r.Body.Bytes(), er)
-		if eu == nil {
+		er = new(tesis.Error)
+		e = json.Unmarshal(r.Body.Bytes(), er)
+		if e == nil {
 			e = fmt.Errorf(er.Message)
 		}
 	} else {
@@ -153,5 +244,20 @@ func ProcRes(r *h.ResponseRecorder, v interface{}) (e error) {
 	// { v is the JSON value when http.StatusOK
 	// ≡ e = nil ≢ e has msg sent when http.StatusBadRequest
 	// ∨ e is unknown code error}
+	return
+}
+
+func errPkey() (e error) {
+	if pkey == nil {
+		e = fmt.Errorf("Nil pkey")
+	}
+	return
+}
+
+func errAuth() (e error) {
+	e = errPkey()
+	if e == nil && j == "" {
+		e = fmt.Errorf("Failed auth")
+	}
 	return
 }
