@@ -16,10 +16,13 @@ const (
 )
 
 func TestLDAPAuth(t *testing.T) {
+	var e error
+	var l *LDAPAuth
 	u, p := os.Getenv("UPR_USER"), os.Getenv("UPR_PASS")
-	l, e := NewLDAPAuth(lds, sf, ldp)
+	l, e = NewLDAPAuth(lds, sf, ldp)
 	if assert.NoError(t, e) {
-		b := l.Authenticate(u, p)
+		var b bool
+		b, e = l.Authenticate(u, p)
 		assert.True(t, b, "Failed authentication")
 	}
 }

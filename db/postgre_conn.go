@@ -13,11 +13,11 @@ func AllStudents() (ss []tesis.DBRecord, e error) {
 	if e == nil {
 		r, e = db.Query("SELECT identification,name FROM student")
 	}
-	ss = make([]tesis.DBRecord)
+	ss = make([]tesis.DBRecord, 0)
 	for r.Next() {
 		var st tesis.DBRecord
 		st = tesis.DBRecord{}
-		r.Scan(&st.id, &st.name)
+		r.Scan(&st.Id, &st.Name)
 		ss = append(ss, st)
 	}
 	return

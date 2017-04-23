@@ -3,7 +3,6 @@ package http
 
 import (
 	"crypto/rsa"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
@@ -31,26 +30,20 @@ var (
 	db       tesis.DBManager
 )
 
-type ServFS struct {
-	Cert, Key string
-}
-
 // Creates a new instance of HTTPPortal and starts serving.
 //  u: URL to serve
 //  a: User authentication interface
 //  d: Database manager interface
-//  f: Files needed to run the server
+//  cr: cert.pem path
+//  ky: key.pem path
 //  h.DefaultServer: h.Server,!
-func ListenAndServe(u string, d tesis.DBManager, f *ServFS) {
+func ListenAndServe(u string, d tesis.DBManager,
+	cr, ky string) {
 	var bs []byte
 	var e error
-	h.DefaultClient.Transport = &h.Transport{
-		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) h.RoundTripper),
-	}
-	// { disabled.HTTP2 }
 	db = d
 	// { auth,db,fs:initialized }
-	bs, e = ioutil.ReadFile(f.Key)
+	bs, e = ioutil.ReadFile(ky)
 	// { loaded.key.bs ≡ e = nil }
 	if e == nil {
 		// { loaded.key.bs }
@@ -63,7 +56,7 @@ func ListenAndServe(u string, d tesis.DBManager, f *ServFS) {
 		h.HandleFunc(recrP, recrH)
 		h.HandleFunc(propP, propH)
 		h.HandleFunc(pendP, pendH)
-		h.ListenAndServeTLS(u, f.Cert, f.Key, nil)
+		h.ListenAndServeTLS(u, cr, ky, nil)
 	}
 	// { started.server ≡ e = nil }
 	if e != nil {
@@ -87,21 +80,22 @@ func authH(w h.ResponseWriter, r *h.Request) {
 		cr = new(tesis.Credentials)
 		e = json.Unmarshal(bs, cr)
 	}
-	var js string
 	if e == nil {
 		var v bool
-		v = db.Authenticate(cr.User, cr.Pass)
-		// { v ≡ registered.user }
-		if v {
-			var u *tesis.User
-			var t *jwt.Token
-			u = &tesis.User{UserName: cr.User}
-			t = jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), u)
-			js, e = t.SignedString(pkey)
-			// { signedString.js ≡ e = nil }
-		} else {
+		v, e = db.Authenticate(cr.User, cr.Pass)
+		if !v {
 			e = fmt.Errorf("Credenciales inválidas")
 		}
+		// { v ≡ registered.user ≡ e = nil }
+	}
+	var js string
+	if e == nil {
+		var u *tesis.User
+		var t *jwt.Token
+		u = &tesis.User{UserName: cr.User}
+		t = jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), u)
+		js, e = t.SignedString(pkey)
+		// { signedString.js ≡ e = nil }
 	}
 	if e == nil {
 		w.Header().Set(AuthHd, js)
@@ -197,10 +191,9 @@ func propH(w h.ResponseWriter, r *h.Request) {
 
 func pendH(w h.ResponseWriter, r *h.Request) {
 	var e error
-	var us string
-	us, e = parseUserName(r, &pkey.PublicKey)
+	_, e = parseUserName(r, &pkey.PublicKey)
 	var bs []byte
-	if r.Method == h.MethodPost {
+	if e != nil && r.Method == h.MethodPost {
 		bs, e = ioutil.ReadAll(r.Body)
 		r.Body.Close()
 	} else {
@@ -213,7 +206,7 @@ func pendH(w h.ResponseWriter, r *h.Request) {
 	}
 	var pd *tesis.PageD
 	if e == nil {
-		pd, e = db.Pending(us, pn.PageN)
+		pd, e = db.Pending(pn.PageN)
 	}
 	var rs []byte
 	if e == nil {
@@ -245,13 +238,21 @@ func parseUserName(r *h.Request, p *rsa.PublicKey) (us string, e error) {
 	if e == nil {
 		if t.Valid {
 			var clm jwt.MapClaims
-			// TODO what can go wrong here?
-			// { t.Claims: jwt.MapClaims }
-			clm = t.Claims.(jwt.MapClaims)
-			us = clm["user"].(string)
+			var ok bool
+			clm, ok = t.Claims.(jwt.MapClaims)
+			if ok {
+				us, ok = clm["user"].(string)
+			} else {
+				e = fmt.Errorf("Error en aserción de tipo jwt.Claims")
+			}
+			if !ok && e == nil {
+				e = fmt.Errorf("Error en aserción de tipo string")
+			}
 		} else {
-			e = fmt.Errorf("Token no válido")
+			e = fmt.Errorf("Token de autenticación inválido")
 		}
+	} else {
+		e = fmt.Errorf("Token de autenticación malformado")
 	}
 	return
 }

@@ -2,16 +2,19 @@ package http
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/lamg/tesis"
+	dbs "github.com/lamg/tesis/db"
 	a "github.com/stretchr/testify/assert"
 	"io"
 	"io/ioutil"
 	"net/http"
 	h "net/http/httptest"
 	"testing"
+	"time"
 )
 
 var j string //json web token
@@ -260,4 +263,45 @@ func errAuth() (e error) {
 		e = fmt.Errorf("Failed auth")
 	}
 	return
+}
+
+func TestServ(t *testing.T) {
+	var d tesis.DBManager
+	var y tesis.UserDB
+	var jsonC, clAddr, srAddr string
+	var e error
+	y, jsonC, clAddr, srAddr = tesis.NewDummyManager(),
+		"application/json", "https://localhost:10443",
+		":10443"
+	d, e = dbs.NewUPRManager("dtFile.json", y)
+	if a.NoError(t, e) {
+		go ListenAndServe(srAddr, d, "cert.pem", "key.pem")
+	}
+	time.Sleep(200 * time.Millisecond)
+	// wait for the server to load
+	//Test auth
+	var tc *tls.Config
+	tc = &tls.Config{InsecureSkipVerify: true}
+	http.DefaultTransport = &http.Transport{
+		TLSNextProto: make(map[string]func(authority string,
+			c *tls.Conn) http.RoundTripper),
+		// { disabledHTTP2 }
+		TLSClientConfig: tc,
+		// { disabledSelfSignedCertCheck }
+	}
+	// { configuredClient }
+
+	var bs []byte
+	var cr *tesis.Credentials
+	cr = &tesis.Credentials{"a", "a"}
+	bs, e = json.Marshal(cr)
+	var rs *http.Response
+	if a.NoError(t, e) {
+		var rd io.Reader
+		rd = bytes.NewReader(bs)
+		rs, e = http.Post(clAddr+"/api/auth", jsonC, rd)
+	}
+	if a.NoError(t, e) {
+		a.EqualValues(t, 200, rs.StatusCode)
+	}
 }

@@ -42,7 +42,7 @@ func (m *DummyManager) UserInfo(u string) (inf *UserInfo, e error) {
 	return
 }
 
-func (d *DummyManager) Authenticate(u, p string) (b bool) {
+func (d *DummyManager) Authenticate(u, p string) (b bool, e error) {
 	b = u == p
 	return
 }
@@ -57,7 +57,7 @@ func (d *DummyManager) Propose(u string, p []Diff) (e error) {
 	return
 }
 
-func (d *DummyManager) Pending(u string, p int) (c *PageD, e error) {
+func (d *DummyManager) Pending(p int) (c *PageD, e error) {
 	c = &PageD{Total: 1, PageN: 1, DiffP: d.pr}
 	return
 }
@@ -76,7 +76,7 @@ func RmEq(l, a []Diff) (p []Diff, e error) {
 		var x, y int
 		x, y, ex = 0, len(l), false
 		for x != y {
-			ex = EqDBRecord(&a[i].DBRec, &l[x].DBRec)
+			ex = a[i].DBRec.Equals(&l[x].DBRec)
 			if !ex {
 				x = x + 1
 			} else {

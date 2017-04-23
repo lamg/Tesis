@@ -1,29 +1,49 @@
 package main
 
 import (
-	"fmt"
+	"flag"
 	"github.com/lamg/tesis"
+	"github.com/lamg/tesis/db"
 	"github.com/lamg/tesis/http"
-	"os"
+	"log"
 )
 
 func main() {
-	var hp string
-	var au tesis.Authenticator
-	var qr tesis.DBManager
+	var hp, cr, ky, lds, suf, dtf *string
+	var ldp *int
+	var dmy *bool
+
+	hp, cr, ky, lds, suf, dtf, ldp, dmy =
+		flag.String("p", ":10443", "Port to serve"),
+		flag.String("c", "cert.pem", "PEM certificate file"),
+		flag.String("k", "key.pem", "PEM key file"),
+		flag.String("ls", "ad.upr.edu.cu",
+			"LDAP server address"),
+		flag.String("sf", "@upr.edu.cu", "Account suffix"),
+		flag.String("df", "dtFile.json",
+			"Activity record in JSON format"),
+		flag.Int("lp", 636, "LDAP server port"),
+		flag.Bool("d", false,
+			"Use dummy authentication instead LDAP")
+	flag.Parse()
+	var qr tesis.UserDB
 	var e error
-	var fs *http.ServFS
+	var um *db.UPRManager
 
-	hp, fs = "localhost:10443", &http.ServFS{"cert.pem", "key.pem"}
+	if *dmy {
+		qr = tesis.NewDummyManager()
+	} else {
+		qr, e = db.NewLDAPAuth(*lds, *suf, *ldp)
+	}
 
-	// au, e = tesis.NewLDAPAuth("ad.upr.edu.cu", "@upr.edu.cu", 636)
-	au = new(tesis.DummyAuth)
 	if e == nil {
 		qr = tesis.NewDummyManager()
-		//{ cwd contains files used by server }
-		http.ListenAndServe(hp, au, qr, fs)
+		um, e = db.NewUPRManager(*dtf, qr)
+	}
+	if e == nil {
+		http.ListenAndServe(*hp, um, *cr, *ky)
 	}
 	if e != nil {
-		fmt.Fprintln(os.Stderr, e.Error())
+		log.Fatal(e)
 	}
 }

@@ -14,26 +14,54 @@ type LDAPAuth struct {
 	sf string //suffix of user account (string after @)
 }
 
-// Authenticate user
-//  u: user (string before @ in user account)
-//  p: password
-func (l *LDAPAuth) Authenticate(u, p string) (b bool) {
-	var e error
-	e = l.c.Bind(u+l.sf, p)
-	b = e == nil
-	return
-}
-
 // New LDAP Authenticator connecting through TLS
 //  lds: LDAP server address
 //  sf: Suffix of user account (string after @)
 //  ldp: LDAP server port
 func NewLDAPAuth(lds, sf string, ldp int) (l *LDAPAuth, e error) {
-	adr, cfg := fmt.Sprintf("%s:%d", lds, ldp),
+	var adr string
+	var cfg *tls.Config
+	adr, cfg = fmt.Sprintf("%s:%d", lds, ldp),
 		&tls.Config{InsecureSkipVerify: true}
 	l = new(LDAPAuth)
 	l.c, e = ldap.DialTLS("tcp", adr, cfg)
 	l.sf = sf
+	return
+}
+
+// Authenticate user
+//  u: user (string before @ in user account)
+//  p: password
+func (l *LDAPAuth) Authenticate(u, p string) (b bool, e error) {
+	e = l.c.Bind(u+l.sf, p)
+	b = e == nil
+	/*if b {
+		var ms []string
+		ea = Search(u, m.lauth.c)
+		ms = ea.GetAttributeValues("memberOf")
+		sort.Strings(ms)
+		var r int
+		var grp string
+		grp = "OU=Gestion" //provisional
+		//TODO definir como se va a marcar a los
+		//usuarios y administradores de este programa
+		//en el directorio activo
+		r = sort.SearchStrings(ms, grp)
+		b = r != len(ms) && ms[r] == grp
+	}
+	// { u belongs to synchronizers group or synchronizers
+	// admin group}
+	*/
+	return
+}
+
+func (l *LDAPAuth) UserInfo(u string) (f *tesis.UserInfo,
+	e error) {
+	var n *ldap.Entry
+	n, e = Search(u, l.c)
+	if e == nil {
+		f = &tesis.UserInfo{Name: n.GetAttributeValue("cn")}
+	}
 	return
 }
 
@@ -42,7 +70,7 @@ func (l *LDAPAuth) Close() (e error) {
 	return
 }
 
-func Search(u string, c *ldap.Conn) (n []*ldap.EntryAttribute, e error) {
+func Search(u string, c *ldap.Conn) (n *ldap.Entry, e error) {
 	var (
 		baseDN                = "dc=upr,dc=edu,dc=cu"
 		scope                 = ldap.ScopeWholeSubtree
@@ -56,12 +84,11 @@ func Search(u string, c *ldap.Conn) (n []*ldap.EntryAttribute, e error) {
 		s      *ldap.SearchRequest
 		r      *ldap.SearchResult
 	)
-
 	s = ldap.NewSearchRequest(baseDN, scope, deref,
 		sizel, timel, tpeol, filter, attrs, conts)
 	r, e = c.Search(s)
-	if e == nil && len(r.Entries) != 0 {
-		n = r.Entries[0].Attributes
+	if e == nil && len(r.Entries) == 1 {
+		n = r.Entries[0]
 	} else if e == nil {
 		e = fmt.Errorf("La búsqueda de %s falló", u)
 	}
