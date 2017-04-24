@@ -37,7 +37,6 @@ func main() {
 	}
 
 	if e == nil {
-		qr = tesis.NewDummyManager()
 		um, e = db.NewUPRManager(*dtf, qr)
 	}
 	if e == nil {

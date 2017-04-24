@@ -50,7 +50,7 @@ func TestAuth(t *testing.T) {
 		rd = bytes.NewReader(bs)
 		q = h.NewRequest(http.MethodPost, local, rd)
 		authH(r, q)
-		j = r.Header().Get(AuthHd)
+		j = r.Body.String()
 	}
 	var b, c bool
 	b, c = j == "", r != nil && (r.Code == http.StatusBadRequest)

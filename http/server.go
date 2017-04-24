@@ -98,7 +98,7 @@ func authH(w h.ResponseWriter, r *h.Request) {
 		// { signedString.js ≡ e = nil }
 	}
 	if e == nil {
-		w.Header().Set(AuthHd, js)
+		_, e = w.Write([]byte(js))
 		// { header set }
 	}
 	writeError(w, e)

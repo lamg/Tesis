@@ -56,7 +56,7 @@
 | Suffix | Request method-AuthHeader-body | Response code-AuthHeader-body |
 |        | <25>                      | <26>                       |
 |--------+---------------------------+----------------------------|
-| /auth  | POST-empty-Credentials    | if ok → 200-JWT-empt   ¬ok 400-empty-error fi |
+| /auth  | POST-empty-Credentials    | if ok → 200-empty-JWT   ¬ok 400-empty-error fi |
 | /uinf  | GET-JWT-empty             | if ok → 200-empty-UserInfo   ¬ok → 400-empty-error fi |
 | /recr  | POST-JWT-PageN            | if ok → 200-empty-PageC   ¬ok → 400-empty-Error fi |
 | /prop  | PATCH-JWT-[]Diff          | if ok → 200-empty-empty   ¬ok → 400-empty-error fi |
