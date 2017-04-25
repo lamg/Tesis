@@ -1,7 +1,6 @@
 package db
 
 import (
-	_ "database/sql"
 	"github.com/lamg/tesis"
 	a "github.com/stretchr/testify/assert"
 	"testing"
@@ -67,32 +66,6 @@ func TestPropose(t *testing.T) {
 	//each proposed doesn't exists in pending
 }
 
-func TestSymDiff(t *testing.T) {
-	var x, y []tesis.Nat
-	x, y = []tesis.Nat{1, 2, 3, 4, 5}, []tesis.Nat{2, 4, 18}
-	var u, v, w, s []tesis.Eq
-	u, v = make([]tesis.Eq, len(x)), make([]tesis.Eq, len(y))
-	for i, j := range x {
-		u[i] = j
-	}
-	for i, j := range y {
-		v[i] = j
-	}
-	w, s = tesis.SymDiff(u, v)
-	var r, p []tesis.Nat
-	var i int
-	r, i, p = []tesis.Nat{1, 3, 5}, 0, []tesis.Nat{2, 4}
-	for len(w) == len(r) && i != len(w) && w[i].(tesis.Nat) == r[i] {
-		i++
-	}
-	a.True(t, i == len(w))
-	i = 0
-	for len(s) == len(p) && i != len(s) && s[i].(tesis.Nat) == p[i] {
-		i++
-	}
-	a.True(t, i == len(p))
-}
-
 func TestSymDiff0(t *testing.T) {
 	var x, y []tesis.Diff
 	x, y =
@@ -120,7 +93,7 @@ func TestSymDiff0(t *testing.T) {
 	u, v = make([]tesis.Eq, len(x)), make([]tesis.Eq, len(y))
 	u[0], v[0] = x[0], y[0]
 	var w, z []tesis.Eq
-	w, z = tesis.SymDiff(u, v)
+	w, z = tesis.DiffInt(u, v)
 	a.True(t, len(w) == 0 && len(z) == 1 &&
 		z[0].Equals(x[0]))
 }

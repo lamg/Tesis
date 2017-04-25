@@ -108,7 +108,7 @@ func (m *UPRManager) Propose(u string, d []tesis.Diff) (e error) {
 	for i, j := range d {
 		g[i] = j
 	}
-	h, l = tesis.SymDiff(f, g)
+	h, l = tesis.DiffInt(f, g)
 	var k, n []tesis.Diff
 	k, n = make([]tesis.Diff, len(h)), make([]tesis.Diff, len(l))
 	for i, j := range h {
