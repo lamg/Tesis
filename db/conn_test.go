@@ -1,7 +1,8 @@
 package db
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/lamg/tesis"
+	a "github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 )
@@ -15,14 +16,31 @@ const (
 	ldp = 636
 )
 
+var u, p string
+var l *LDAPAuth
+var e error
+
+func init() {
+	u, p = os.Getenv("UPR_USER"), os.Getenv("UPR_PASS")
+}
+
 func TestLDAPAuth(t *testing.T) {
-	var e error
-	var l *LDAPAuth
-	u, p := os.Getenv("UPR_USER"), os.Getenv("UPR_PASS")
 	l, e = NewLDAPAuth(lds, sf, ldp)
-	if assert.NoError(t, e) {
+	if a.NoError(t, e) {
 		var b bool
 		b, e = l.Authenticate(u, p)
-		assert.True(t, b, "Failed authentication")
+		a.True(t, b, "Failed authentication")
 	}
 }
+
+func TestGetUsers(t *testing.T) {
+	var us []tesis.DBRecord
+	if a.NoError(t, e) {
+		us, e = l.GetUsers()
+	}
+	if a.NoError(t, e) {
+		t.Log(len(us))
+	}
+}
+
+//go test -v -run 'TestLDAPAuth|TestGetUsers'

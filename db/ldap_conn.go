@@ -60,7 +60,7 @@ func (l *LDAPAuth) UserInfo(u string) (f *tesis.UserInfo,
 	var n *ldap.Entry
 	n, e = Search(u, l.c)
 	if e == nil {
-		f = &tesis.UserInfo{Name: n.GetAttributeValue("cn")}
+		f = &tesis.UserInfo{Name: n.GetAttributeValue("CN")}
 	}
 	return
 }
@@ -99,19 +99,32 @@ func Search(u string, c *ldap.Conn) (n *ldap.Entry, e error) {
 func (l *LDAPAuth) GetUsers() (us []tesis.DBRecord, e error) {
 	var f string
 	var a []string
-	f, a = "(&(objectClass=user))", []string{"cn",
-		"userPrincipalName", IN}
+	f, a = "(&(objectCategory=person)(objectClass=user))",
+		[]string{"cn", "userPrincipalName", IN}
 	var n []*ldap.Entry
 	n, e = SearchFilter(f, a, l.c)
-	us = make([]tesis.DBRecord, len(n))
+	us = make([]tesis.DBRecord, 0, len(n))
 	for _, i := range n {
 		var r tesis.DBRecord
-		r = tesis.DBRecord{
-			Name: i.GetAttributeValue("cn"),
-			Id:   i.GetAttributeValue("userPrincipalName"),
-			IN:   i.GetAttributeValue(IN),
+		r = tesis.DBRecord{}
+		var ln int
+		var b bool
+		ln = len(i.Attributes)
+		b = ln >= 1
+		if b {
+			r.Name = i.Attributes[0].Values[0]
+			b = ln >= 2
 		}
-		us = append(us, r)
+		if b {
+			r.Id = i.Attributes[1].Values[0]
+			b = ln >= 3
+		}
+		if b {
+			r.IN = i.Attributes[2].Values[0]
+		}
+		if r.Name != "" && r.Id != "" {
+			us = append(us, r)
+		}
 	}
 	return
 }
@@ -133,7 +146,7 @@ func SearchFilter(f string, ats []string, c *ldap.Conn) (n []*ldap.Entry, e erro
 	r, e = c.Search(s)
 	if e == nil && len(r.Entries) == 0 {
 		e = fmt.Errorf("La búsqueda de %s falló", f)
-	} else {
+	} else if e == nil {
 		n = r.Entries
 	}
 	return
