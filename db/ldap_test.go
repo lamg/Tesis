@@ -17,14 +17,15 @@ const (
 )
 
 var u, p string
-var l *LDAPAuth
-var e error
 
 func init() {
 	u, p = os.Getenv("UPR_USER"), os.Getenv("UPR_PASS")
 }
 
 func TestLDAPAuth(t *testing.T) {
+	var l *LDAPAuth
+	var e error
+
 	l, e = NewLDAPAuth(lds, sf, ldp)
 	if a.NoError(t, e) {
 		var b bool
@@ -35,11 +36,19 @@ func TestLDAPAuth(t *testing.T) {
 
 func TestGetUsers(t *testing.T) {
 	var us []tesis.DBRecord
+	var r tesis.RecordProvider
+	var e error
+	r, e = NewLDAPProv(u, p)
 	if a.NoError(t, e) {
-		us, e = l.GetUsers()
+		us, e = r.Records()
 	}
 	if a.NoError(t, e) {
 		t.Log(len(us))
+		for _, j := range us {
+			if j.Id == "luis.mendez@estudiantes.upr.edu.cu" {
+				t.Log(j)
+			}
+		}
 	}
 }
 

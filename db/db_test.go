@@ -6,15 +6,6 @@ import (
 	"testing"
 )
 
-func TestConn(t *testing.T) {
-	var r []tesis.DBRecord
-	var e error
-	r, e = AllStudents()
-	if a.NoError(t, e) {
-		t.Log(len(r))
-	}
-}
-
 func TestPageSlice(t *testing.T) {
 	var s, r []interface{}
 	s = make([]interface{}, 20)

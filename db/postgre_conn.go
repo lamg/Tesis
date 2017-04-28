@@ -2,18 +2,31 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/lamg/tesis"
 	_ "github.com/lib/pq"
 )
 
-func AllStudents() (ss []tesis.DBRecord, e error) {
-	var db *sql.DB
-	var r *sql.Rows
-	db, e = sql.Open("postgres", "postgres://lamg:hqmnv78@10.2.24.117/sigenu")
+func NewPSProvider(u, p string) (r tesis.RecordProvider, e error) {
+	var l *PSProv
+	l = new(PSProv)
+	var s string
+	s = fmt.Sprintf("postgres://%s:%s@10.2.24.117/sigenu", u, p)
+	l.db, e = sql.Open("postgres", s)
 	if e == nil {
-		r, e = db.Query("SELECT id_student,identification,name,middle_name,last_name FROM student")
+		r = l
 	}
-	ss = make([]tesis.DBRecord, 0)
+	return
+}
+
+type PSProv struct {
+	db *sql.DB
+}
+
+func (p *PSProv) Records() (s []tesis.DBRecord, e error) {
+	var r *sql.Rows
+	r, e = p.db.Query("SELECT id_student,identification,name,middle_name,last_name FROM student")
+	s = make([]tesis.DBRecord, 0)
 	for e == nil && r.Next() {
 		var st tesis.DBRecord
 		st = tesis.DBRecord{}
@@ -21,9 +34,14 @@ func AllStudents() (ss []tesis.DBRecord, e error) {
 		e = r.Scan(&st.Id, &st.IN, &name, &middle_name, &last_name)
 		if e == nil {
 			st.Name = name + middle_name + last_name
-			ss = append(ss, st)
+			s = append(s, st)
 		}
 	}
+	return
+}
+
+func (p *PSProv) Name() (s string) {
+	s = "sigenu"
 	return
 }
 

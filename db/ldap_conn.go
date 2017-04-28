@@ -7,11 +7,35 @@ import (
 	"github.com/lamg/tesis"
 )
 
-const IN = "in" //identity number
+const IN = "employeeID" //identity number
 
 type LDAPAuth struct {
 	c  *ldap.Conn
 	sf string //suffix of user account (string after @)
+}
+
+func NewLDAPProv(u, p string) (r tesis.RecordProvider, e error) {
+	var l *LDAPAuth
+	const (
+		//ldap server address
+		lds = "ad.upr.edu.cu"
+		//account suffix
+		sf = "@upr.edu.cu"
+		//ldap server port
+		ldp = 636
+	)
+	l, e = NewLDAPAuth(lds, sf, ldp)
+	var b bool
+	if e == nil {
+		b, e = l.Authenticate(u, p)
+	}
+	if !b {
+		e = fmt.Errorf("Falló al autenticar")
+	}
+	if e == nil {
+		r = l
+	}
+	return
 }
 
 // New LDAP Authenticator connecting through TLS
@@ -52,6 +76,11 @@ func (l *LDAPAuth) Authenticate(u, p string) (b bool, e error) {
 	// { u belongs to synchronizers group or synchronizers
 	// admin group}
 	*/
+	return
+}
+
+func (l *LDAPAuth) Name() (s string) {
+	s = "LDAP"
 	return
 }
 
@@ -96,7 +125,7 @@ func Search(u string, c *ldap.Conn) (n *ldap.Entry, e error) {
 	return
 }
 
-func (l *LDAPAuth) GetUsers() (us []tesis.DBRecord, e error) {
+func (l *LDAPAuth) Records() (us []tesis.DBRecord, e error) {
 	var f string
 	var a []string
 	f, a = "(&(objectCategory=person)(objectClass=user))",

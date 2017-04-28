@@ -2,7 +2,14 @@ package tesis
 
 import (
 	"github.com/dgrijalva/jwt-go"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
+	"io"
+	"io/ioutil"
+	"log"
+	"strings"
 	"time"
+	"unicode"
 )
 
 // This interface is an abstract program specification.
@@ -14,6 +21,11 @@ type DBManager interface {
 	Record(string, int) (*PageC, error)
 	Propose(string, []Diff) error
 	Pending(int) (*PageD, error)
+}
+
+type RecordProvider interface {
+	Records() ([]DBRecord, error)
+	Name() string
 }
 
 type Activity struct {
@@ -105,6 +117,32 @@ func (d DBRecord) Equals(c interface{}) (b bool) {
 	return
 }
 
+func (d DBRecord) Similar(o interface{}) (b bool) {
+	var e DBRecord
+	e, b = o.(DBRecord)
+	b = b && (toStd(d.Name) == toStd(e.Name) ||
+		d.Equals(e))
+	return
+}
+
+func toStd(s string) (t string) {
+	t = strings.Replace(strings.ToLower(s), " ", "", -1)
+	var rd io.Reader
+	rd = strings.NewReader(t)
+	var isMn func(rune) bool
+	isMn = func(r rune) bool {
+		return unicode.Is(unicode.Mn, r)
+	}
+	var tr transform.Transformer
+	tr = transform.Chain(norm.NFD,
+		transform.RemoveFunc(isMn), norm.NFC)
+	rd = transform.NewReader(rd, tr)
+	var bs []byte
+	bs, _ = ioutil.ReadAll(rd)
+	t = string(bs)
+	return
+}
+
 func (d Diff) Equals(c interface{}) (b bool) {
 	var x Diff
 	x, b = c.(Diff)
@@ -172,6 +210,9 @@ Calculating the negation of the last guard
 */
 
 // This algorithm is a "descendant" of DiffInt
+// c = a - b
+// d and e are the couples of similar elements
+// f = b - c
 func DiffSym(a, b []Sim) (c, d, e, f []Sim) {
 	var i, j, k, l int //i,j for a and k,l for b
 	i, j, k, l, c, d, e, f = 0, 0, 0, 0,
@@ -182,15 +223,14 @@ func DiffSym(a, b []Sim) (c, d, e, f []Sim) {
 	for !(i == len(a) && k == len(b)) {
 		var ra, rb bool
 		ra, rb = i != len(a) && j != len(b) &&
-			a[i].Equals(b[j]),
-			k != len(b) && l != len(a) && b[k].Equals(a[l])
+			a[i].Similar(b[j]),
+			k != len(b) && l != len(a) && b[k].Similar(a[l])
 		if ra || rb {
 			if ra {
+				log.Print(i)
 				// { a.i ∈ a ∩ b }
 				// a.i and b.j are equal ∨ a.i and b.j are similar
-				if a[i].Similar(b[j]) {
-					d, e = append(d, a[i]), append(e, b[j])
-				}
+				d, e = append(d, a[i]), append(e, b[j])
 				// a.i and b.j are equal ∨ a.i and b.j are
 				// stored in correspondent indexes of d and e
 				i = i + 1

@@ -36,3 +36,12 @@ func eqnat(x []Nat, y []Sim) (b bool) {
 	b = i == len(x)
 	return
 }
+
+func TestToStd(t *testing.T) {
+	var p, q, r string
+	p, q = "Luis Ángel Méndez Gort Ññ", "luisangelmendezgortnn"
+	r = toStd(p)
+	if !assert.EqualValues(t, q, r) {
+		t.Log(r)
+	}
+}
