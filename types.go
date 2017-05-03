@@ -3,15 +3,10 @@ package tesis
 import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
-	"golang.org/x/text/transform"
-	"golang.org/x/text/unicode/norm"
-	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 	"time"
-	"unicode"
 )
 
 // This interface is an abstract program specification.
@@ -128,20 +123,38 @@ func (d DBRecord) Similar(o interface{}) (b bool) {
 }
 
 func toStd(s string) (t string) {
-	t = strings.Replace(strings.ToLower(s), " ", "", -1)
-	var rd io.Reader
-	rd = strings.NewReader(t)
-	var isMn func(rune) bool
-	isMn = func(r rune) bool {
-		return unicode.Is(unicode.Mn, r)
-	}
-	var tr transform.Transformer
-	tr = transform.Chain(norm.NFD,
-		transform.RemoveFunc(isMn), norm.NFC)
-	rd = transform.NewReader(rd, tr)
-	var bs []byte
-	bs, _ = ioutil.ReadAll(rd)
-	t = string(bs)
+	t = strings.Map(func(x rune) (y rune) {
+		if x == 'á' {
+			y = 'a'
+		} else if x == 'é' {
+			y = 'e'
+		} else if x == 'í' {
+			y = 'i'
+		} else if x == 'ó' {
+			y = 'o'
+		} else if x == 'ú' {
+			y = 'u'
+		} else if x == 'ñ' {
+			y = 'n'
+		} else if x == 'Á' {
+			y = 'a'
+		} else if x == 'É' {
+			y = 'e'
+		} else if x == 'Í' {
+			y = 'i'
+		} else if x == 'Ó' {
+			y = 'o'
+		} else if x == 'Ú' {
+			y = 'u'
+		} else if x == 'Ñ' {
+			y = 'n'
+		} else if x == ' ' {
+			y = -1
+		} else {
+			y = x
+		}
+		return
+	}, s)
 	return
 }
 

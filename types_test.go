@@ -12,7 +12,7 @@ func TestDiffSym(t *testing.T) {
 	// x = v - w ∧ y = v ∩ w ∧ z = w - x
 	var a, b, c, d, e, f []Sim
 	a, b = conv(v), conv(w)
-	var rp *tRpr
+	var rp *TRpr
 	rp = NewTRpr(t)
 	c, d, e, f = DiffSym(a, b, rp)
 	assert.True(t, eqnat(x, c) &&
@@ -41,9 +41,7 @@ func eqnat(x []Nat, y []Sim) (b bool) {
 
 func TestToStd(t *testing.T) {
 	var p, q, r string
-	p, q = "Luis Ángel Méndez Gort Ññ", "luisangelmendezgortnn"
+	p, q = "Luis Ángel Méndez Gort Ññ", "LuisangelMendezGortnn"
 	r = toStd(p)
-	if !assert.EqualValues(t, q, r) {
-		t.Log(r)
-	}
+	assert.EqualValues(t, q, r)
 }
