@@ -9,11 +9,9 @@ import (
 
 const (
 	//ldap server address
-	lds = "ad.upr.edu.cu"
+	lda = "ad.upr.edu.cu:636"
 	//account suffix
 	sf = "@upr.edu.cu"
-	//ldap server port
-	ldp = 636
 )
 
 var u, p string
@@ -26,7 +24,7 @@ func TestLDAPAuth(t *testing.T) {
 	var l *LDAPAuth
 	var e error
 
-	l, e = NewLDAPAuth(lds, sf, ldp)
+	l, e = NewLDAPAuth(lda, sf)
 	if a.NoError(t, e) {
 		var b bool
 		b, e = l.Authenticate(u, p)
@@ -38,7 +36,7 @@ func TestGetUsers(t *testing.T) {
 	var us []tesis.DBRecord
 	var r tesis.RecordProvider
 	var e error
-	r, e = NewLDAPProv(u, p)
+	r, e = NewLDAPProv(u, p, "10.2.24.35:636", -1)
 	if a.NoError(t, e) {
 		us, e = r.Records()
 	}

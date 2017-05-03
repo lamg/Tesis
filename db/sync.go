@@ -2,10 +2,10 @@ package db
 
 import (
 	"github.com/lamg/tesis"
-	"log"
 )
 
-func Sync(dbProv, ldProv tesis.RecordProvider) (ds []tesis.Diff, e error) {
+func Sync(dbProv, ldProv tesis.RecordProvider,
+	rp tesis.Reporter) (ds []tesis.Diff, e error) {
 	var st, us []tesis.DBRecord
 	st, e = dbProv.Records()
 	if e == nil {
@@ -13,20 +13,15 @@ func Sync(dbProv, ldProv tesis.RecordProvider) (ds []tesis.Diff, e error) {
 	}
 	var f, g, h, i, x, y []tesis.Sim
 	if e == nil {
-		st, us = st[:1000], us[:1000] //Test purposes
 		x, y = convSim(st), convSim(us)
-		f, g, h, i = tesis.DiffSym(x, y)
+		f, g, h, i = tesis.DiffSym(x, y, rp)
 		// { ¬ (g,h contain equal couples) }
-		log.Printf("f=%d,g=%d,h=%d,i=%d", len(f), len(g), len(h),
-			len(i))
 	}
-	//TODO
 	var j, k, l, m []tesis.DBRecord
 	if e == nil {
 		j, k, l, m = convDBR(f), convDBR(g), convDBR(h),
 			convDBR(i)
 		ds = make([]tesis.Diff, 0, len(j)+len(k)+len(m))
-		log.Printf("ds=%d", len(ds))
 		for _, jx := range j {
 			ds = append(ds, tesis.Diff{
 				DBRec:    jx,

@@ -1,13 +1,15 @@
 package tesis
 
 import (
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 	"io"
 	"io/ioutil"
-	"log"
+	"os"
 	"strings"
+	"testing"
 	"time"
 	"unicode"
 )
@@ -209,25 +211,61 @@ Calculating the negation of the last guard
   x ∨ ok
 */
 
+type Reporter interface {
+	Progress(float32)
+}
+
+type TRpr struct {
+	t   *testing.T
+	Log bool
+}
+
+func NewTRpr(t *testing.T) (r *TRpr) {
+	r = &TRpr{t: t}
+	return
+}
+
+func (r *TRpr) Progress(p float32) {
+	if r.Log {
+		r.t.Logf("%.0f", p*100)
+	}
+}
+
+type PRpr struct {
+}
+
+func NewPRpr() (r *PRpr) {
+	r = new(PRpr)
+	return
+}
+
+func (r *PRpr) Progress(p float32) {
+	fmt.Fprintf(os.Stderr, "%.4f%s\r", p, "%")
+}
+
 // This algorithm is a "descendant" of DiffInt
 // c = a - b
 // d and e are the couples of similar elements
 // f = b - c
-func DiffSym(a, b []Sim) (c, d, e, f []Sim) {
+func DiffSym(a, b []Sim, rp Reporter) (c, d, e, f []Sim) {
 	var i, j, k, l int //i,j for a and k,l for b
-	i, j, k, l, c, d, e, f = 0, 0, 0, 0,
+	var tot, prog float32
+	i, j, k, l, c, d, e, f, tot, prog = 0, 0, 0, 0,
 		make([]Sim, 0, len(a)),
 		make([]Sim, 0, max(len(a), len(b))),
 		make([]Sim, 0, max(len(a), len(b))),
-		make([]Sim, 0, len(b))
+		make([]Sim, 0, len(b)),
+		float32(len(a)*len(b)),
+		0
 	for !(i == len(a) && k == len(b)) {
 		var ra, rb bool
+		prog = float32(i*k) / tot
+		rp.Progress(prog)
 		ra, rb = i != len(a) && j != len(b) &&
 			a[i].Similar(b[j]),
 			k != len(b) && l != len(a) && b[k].Similar(a[l])
 		if ra || rb {
 			if ra {
-				log.Print(i)
 				// { a.i ∈ a ∩ b }
 				// a.i and b.j are equal ∨ a.i and b.j are similar
 				d, e = append(d, a[i]), append(e, b[j])

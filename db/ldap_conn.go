@@ -10,21 +10,16 @@ import (
 const IN = "employeeID" //identity number
 
 type LDAPAuth struct {
-	c  *ldap.Conn
-	sf string //suffix of user account (string after @)
+	c     *ldap.Conn
+	sf    string //suffix of user account (string after @)
+	limit int
 }
 
-func NewLDAPProv(u, p string) (r tesis.RecordProvider, e error) {
+func NewLDAPProv(u, p, lda string, t int) (r tesis.RecordProvider, e error) {
+	//set a limit
 	var l *LDAPAuth
-	const (
-		//ldap server address
-		lds = "ad.upr.edu.cu"
-		//account suffix
-		sf = "@upr.edu.cu"
-		//ldap server port
-		ldp = 636
-	)
-	l, e = NewLDAPAuth(lds, sf, ldp)
+	const sf = "@upr.edu.cu" //account suffix
+	l, e = NewLDAPAuth(lda, sf)
 	var b bool
 	if e == nil {
 		b, e = l.Authenticate(u, p)
@@ -33,6 +28,7 @@ func NewLDAPProv(u, p string) (r tesis.RecordProvider, e error) {
 		e = fmt.Errorf("Falló al autenticar")
 	}
 	if e == nil {
+		l.limit = t
 		r = l
 	}
 	return
@@ -42,13 +38,11 @@ func NewLDAPProv(u, p string) (r tesis.RecordProvider, e error) {
 //  lds: LDAP server address
 //  sf: Suffix of user account (string after @)
 //  ldp: LDAP server port
-func NewLDAPAuth(lds, sf string, ldp int) (l *LDAPAuth, e error) {
-	var adr string
+func NewLDAPAuth(lda, sf string) (l *LDAPAuth, e error) {
 	var cfg *tls.Config
-	adr, cfg = fmt.Sprintf("%s:%d", lds, ldp),
-		&tls.Config{InsecureSkipVerify: true}
+	cfg = &tls.Config{InsecureSkipVerify: true}
 	l = new(LDAPAuth)
-	l.c, e = ldap.DialTLS("tcp", adr, cfg)
+	l.c, e = ldap.DialTLS("tcp", lda, cfg)
 	l.sf = sf
 	return
 }
@@ -132,6 +126,9 @@ func (l *LDAPAuth) Records() (us []tesis.DBRecord, e error) {
 		[]string{"cn", "userPrincipalName", IN}
 	var n []*ldap.Entry
 	n, e = SearchFilter(f, a, l.c)
+	if e == nil && l.limit >= 0 && l.limit <= len(n) {
+		n = n[:l.limit]
+	}
 	us = make([]tesis.DBRecord, 0, len(n))
 	for _, i := range n {
 		var r tesis.DBRecord

@@ -12,7 +12,9 @@ func TestDiffSym(t *testing.T) {
 	// x = v - w ∧ y = v ∩ w ∧ z = w - x
 	var a, b, c, d, e, f []Sim
 	a, b = conv(v), conv(w)
-	c, d, e, f = DiffSym(a, b)
+	var rp *tRpr
+	rp = NewTRpr(t)
+	c, d, e, f = DiffSym(a, b, rp)
 	assert.True(t, eqnat(x, c) &&
 		eqnat(y, d) && eqnat(y, e) && eqnat(z, f))
 }

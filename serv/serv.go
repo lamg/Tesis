@@ -9,20 +9,18 @@ import (
 )
 
 func main() {
-	var hp, cr, ky, lds, suf, dtf *string
-	var ldp *int
+	var hp, cr, ky, lda, suf, dtf *string
 	var dmy *bool
 
-	hp, cr, ky, lds, suf, dtf, ldp, dmy =
+	hp, cr, ky, lds, suf, dtf, dmy =
 		flag.String("p", ":10443", "Port to serve"),
 		flag.String("c", "cert.pem", "PEM certificate file"),
 		flag.String("k", "key.pem", "PEM key file"),
-		flag.String("ls", "ad.upr.edu.cu",
+		flag.String("ls", "ad.upr.edu.cu:636",
 			"LDAP server address"),
 		flag.String("sf", "@upr.edu.cu", "Account suffix"),
 		flag.String("df", "dtFile.json",
 			"Activity record in JSON format"),
-		flag.Int("lp", 636, "LDAP server port"),
 		flag.Bool("d", false,
 			"Use dummy authentication instead LDAP")
 	flag.Parse()
@@ -33,7 +31,7 @@ func main() {
 	if *dmy {
 		qr = tesis.NewDummyManager()
 	} else {
-		qr, e = db.NewLDAPAuth(*lds, *suf, *ldp)
+		qr, e = db.NewLDAPAuth(*lds, *suf)
 	}
 
 	if e == nil {
