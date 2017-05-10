@@ -103,3 +103,30 @@ func RmEq(l, a []Diff) (p []Diff, e error) {
 	// exists an element in a not in l }
 	return
 }
+
+func NewDRCP(l Logger) (r RecordReceptor) {
+	var x *DRCP
+	x = &DRCP{l: l}
+	r = x
+	return
+}
+
+// Dummy RecordReceptor
+type DRCP struct {
+	l Logger
+}
+
+func (d *DRCP) Create(id string, r *DBRecord) (e error) {
+	d.l.Logf("Create id: %s d: %v", id, r)
+	return
+}
+
+func (d *DRCP) Update(id string, r *DBRecord) (e error) {
+	d.l.Logf("Update id: %s d: %v", id, r)
+	return
+}
+
+func (d *DRCP) Delete(id string) (e error) {
+	d.l.Logf("Delete id: %s")
+	return
+}

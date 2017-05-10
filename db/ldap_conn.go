@@ -5,9 +5,76 @@ import (
 	"fmt"
 	"github.com/go-ldap/ldap"
 	"github.com/lamg/tesis"
+	"strings"
 )
 
-const IN = "employeeID" //identity number
+const (
+	IN                = "employeeID" //identity number
+	userPrincipalName = "userPrincipalName"
+	mail              = "mail"
+	sAMAccountName    = "sAMAccountName"
+	streetAddress     = "streetAddress"
+	telephoneNumber   = "telephoneNumber"
+	DN                = "distinguishedName"
+	CN                = "cn"
+)
+
+type LDAPRecp struct {
+	c *ldap.Conn
+}
+
+func NewLDAPRecp(adr, u,
+	p string) (r tesis.RecordReceptor, e error) {
+	var cfg *tls.Config
+	var l *LDAPRecp
+	cfg, l = &tls.Config{InsecureSkipVerify: true},
+		new(LDAPRecp)
+
+	l.c, e = ldap.DialTLS("tcp", adr, cfg)
+	r = l
+	return
+}
+
+func (l *LDAPRecp) Create(dn string,
+	d *tesis.DBRecord) (e error) {
+	var rq *ldap.AddRequest
+
+	rq = ldap.NewAddRequest(dn)
+	rq.Attribute(IN, []string{d.IN})
+	rq.Attribute(CN, []string{d.Name})
+	rq.Attribute(streetAddress, []string{d.Addr})
+	rq.Attribute(telephoneNumber, []string{d.Tel})
+	e = l.c.Add(rq)
+	return
+}
+
+func (l *LDAPRecp) Update(dn string,
+	d *tesis.DBRecord) (e error) {
+	var rq *ldap.ModifyRequest
+	rq = ldap.NewModifyRequest(dn)
+	rq.Add(IN, []string{d.IN})
+	rq.Add(CN, []string{d.Name})
+	rq.Add(streetAddress, []string{d.Addr})
+	rq.Add(telephoneNumber, []string{d.Tel})
+	e = l.c.Modify(rq)
+	return
+}
+
+func (l *LDAPRecp) Delete(dn string) (e error) {
+	//var rq *ldap.DelRequest
+	//change distinguished name to move the record
+	//to another part of the LDAP tree
+	//var rq *ldap.ModifyRequest
+	//rq = ldap.NewModifyRequest(dn)
+	//TODO
+	// read backwards dn, is equal to ndn until
+	// last DC, then OU=_Usuarios change to OU=_Graduados
+	// or OU=_Baja according student status
+	//rq.Add(DN, nDN)
+	//e = l.c.Modify(rq)
+	e = fmt.Errorf("Not implemented")
+	return
+}
 
 type LDAPAuth struct {
 	c     *ldap.Conn
@@ -24,7 +91,7 @@ func NewLDAPProv(u, p, lda string, t int) (r tesis.RecordProvider, e error) {
 	if e == nil {
 		b, e = l.Authenticate(u, p)
 	}
-	if !b {
+	if e == nil && !b {
 		e = fmt.Errorf("Falló al autenticar")
 	}
 	if e == nil {
@@ -101,7 +168,7 @@ func Search(u string, c *ldap.Conn) (n *ldap.Entry, e error) {
 		sizel                 = 0
 		timel                 = 0
 		tpeol                 = false //TypesOnly
-		filter                = fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))", u)
+		filter                = fmt.Sprintf("(&(objectClass=user)(cn=%s))", u)
 		attrs                 = []string{}
 		conts  []ldap.Control = nil //[]Control
 		s      *ldap.SearchRequest
@@ -123,7 +190,7 @@ func (l *LDAPAuth) Records() (us []tesis.DBRecord, e error) {
 	var f string
 	var a []string
 	f, a = "(&(objectCategory=person)(objectClass=user))",
-		[]string{"cn", "userPrincipalName", IN}
+		[]string{"cn", DN, IN}
 	var n []*ldap.Entry
 	n, e = SearchFilter(f, a, l.c)
 	if e == nil && l.limit >= 0 && l.limit <= len(n) {
@@ -142,7 +209,7 @@ func (l *LDAPAuth) Records() (us []tesis.DBRecord, e error) {
 			b = ln >= 2
 		}
 		if b {
-			r.Id = i.Attributes[1].Values[0]
+			r.Id = strings.Join(i.Attributes[1].Values, ",")
 			b = ln >= 3
 		}
 		if b {

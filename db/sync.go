@@ -4,24 +4,23 @@ import (
 	"github.com/lamg/tesis"
 )
 
-func Sync(dbProv, ldProv tesis.RecordProvider,
+func PDiff(dbProv, ldProv tesis.RecordProvider,
 	rp tesis.Reporter) (ds []tesis.Diff, e error) {
 	var st, us []tesis.DBRecord
 	st, e = dbProv.Records()
 	if e == nil {
 		us, e = ldProv.Records()
 	}
-	var f, g, h, i, x, y []tesis.Sim
+	var g, h, x, y []tesis.Sim
 	if e == nil {
 		x, y = convSim(st), convSim(us)
-		f, g, h, i = tesis.DiffSym(x, y, rp)
+		_, g, h, _ = tesis.DiffSym(x, y, rp)
 		// { ¬ (g,h contain equal couples) }
 	}
-	var j, k, l, m []tesis.DBRecord
+	var k, l []tesis.DBRecord
 	if e == nil {
-		j, k, l, m = convDBR(f), convDBR(g), convDBR(h),
-			convDBR(i)
-		ds = make([]tesis.Diff, 0, len(j)+len(k)+len(m))
+		k, l = convDBR(g), convDBR(h)
+		/*ds = make([]tesis.Diff, 0, len(j)+len(k)+len(m))
 		for _, jx := range j {
 			ds = append(ds, tesis.Diff{
 				DBRec:    jx,
@@ -29,7 +28,7 @@ func Sync(dbProv, ldProv tesis.RecordProvider,
 				Exists:   false,
 				Mismatch: false,
 			})
-		}
+		}*/
 		// { ds contains LDAP additions }
 		for ix, jx := range k {
 			ds = append(ds, tesis.Diff{
@@ -41,14 +40,14 @@ func Sync(dbProv, ldProv tesis.RecordProvider,
 			})
 		}
 		// { ds contains LDAP mismatches }
-		for _, jx := range m {
+		/*for _, jx := range m {
 			ds = append(ds, tesis.Diff{
 				LDAPRec:  jx,
 				Src:      dbProv.Name(),
 				Exists:   true,
 				Mismatch: false,
 			})
-		}
+		}*/
 		// { ds contains LDAP deletions }
 		// { ds contains all pending operations for dbProv }
 	}

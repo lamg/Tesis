@@ -5,8 +5,6 @@ import (
 	"github.com/lamg/tesis"
 	"io"
 	"io/ioutil"
-	"log"
-	"os"
 )
 
 type UPRManager struct {
@@ -14,24 +12,15 @@ type UPRManager struct {
 	steSys *tesis.StateSys
 	// { JSONRepr.usrDt = contents.dtFile
 	//   ≡ exists.dtFile }
-	dtFile string
+	writer io.Writer
 	pgLen  int // { pgLen ≥ 0 }
 }
 
-func NewUPRManager(dtFile string, a tesis.UserDB) (m *UPRManager, e error) {
-	var f io.ReadCloser
-	f, e = os.Open(dtFile)
+func NewUPRManager(f io.Reader, w io.Writer, a tesis.UserDB) (m *UPRManager, e error) {
 	var bs []byte
-	if e == nil {
-		bs, e = ioutil.ReadAll(f)
-	}
+	bs, e = ioutil.ReadAll(f)
 	var ss *tesis.StateSys
 	if e == nil {
-		var ce error
-		ce = f.Close()
-		if ce != nil {
-			log.Print(ce.Error())
-		}
 		ss = new(tesis.StateSys)
 		e = json.Unmarshal(bs, ss)
 	}
@@ -42,7 +31,7 @@ func NewUPRManager(dtFile string, a tesis.UserDB) (m *UPRManager, e error) {
 		m = &UPRManager{
 			usrDB:  a,
 			steSys: ss,
-			dtFile: dtFile,
+			writer: w,
 			pgLen:  10,
 		}
 	}
@@ -127,13 +116,8 @@ func (m *UPRManager) Propose(u string, d []tesis.Diff) (e error) {
 	if e == nil {
 		bs, e = json.MarshalIndent(m.steSys, "", "\t")
 	}
-	var w io.WriteCloser
 	if e == nil {
-		w, e = os.Create(m.dtFile)
-	}
-	if e == nil {
-		_, e = w.Write(bs)
-		w.Close()
+		_, e = m.writer.Write(bs)
 	}
 	// { contents.(m.dtFile) = JSONRep.(m.usrDt) ≡ e = nil }
 	return

@@ -110,3 +110,14 @@
 	
 	The following interface represents the storage
 	~UserInfo ∧ Record ∧ Proposed ∧ Pending~
+
+* Tasks
+- Select a directory with the proper files for testing
+	all commands
+
+* Rules
+- the user and passwords to access LDAP and SIGENU are env(UPR_USER)
+  and env(UPR_PASS).
+- additions and deletions are disabled in tesis.DiffSym
+	due to ambiguous specification.
+

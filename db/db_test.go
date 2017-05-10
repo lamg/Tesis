@@ -1,8 +1,10 @@
 package db
 
 import (
+	"bytes"
 	"github.com/lamg/tesis"
 	a "github.com/stretchr/testify/assert"
+	"io"
 	"testing"
 )
 
@@ -23,7 +25,12 @@ func TestPending(t *testing.T) {
 	var e error
 	var dm tesis.UserDB
 	dm = &tesis.DummyManager{}
-	um, e = NewUPRManager("dtFile.json", dm)
+	var rd io.Reader
+	var wr io.Writer
+	rd, wr = bytes.NewBufferString(ssJSON),
+		bytes.NewBufferString("")
+
+	um, e = NewUPRManager(rd, wr, dm)
 	var pd *tesis.PageD
 	if a.NoError(t, e) {
 		pd, e = um.Pending(0)
@@ -48,7 +55,12 @@ func TestPropose(t *testing.T) {
 	var dm tesis.UserDB
 	dm = &tesis.DummyManager{}
 	//FIXME no esta leyendo el archivo
-	um, e = NewUPRManager("dtFile.json", dm)
+	var rd io.Reader
+	var wr io.Writer
+	rd, wr = bytes.NewBufferString(ssJSON),
+		bytes.NewBufferString("")
+
+	um, e = NewUPRManager(rd, wr, dm)
 	if a.NoError(t, e) {
 		e = um.Propose("lamg", pr)
 	}
@@ -87,3 +99,31 @@ func TestSymDiff0(t *testing.T) {
 	a.True(t, len(w) == 0 && len(z) == 1 &&
 		z[0].Equals(x[0]))
 }
+
+var ssJSON = `
+{
+   "pending": [
+     {
+			"ldapRec": {
+				"id": "CN=Claudia Crúz Labrador,OU=4to,OU=MarxismoHistoria,OU=CRD,OU=Pregrado,OU=Estudiantes,OU=FEM,OU=Facultades,OU=_Usuarios,DC=upr,DC=edu,DC=cu",
+				"in": "",
+				"name": "Claudia Crúz Labrador",
+				"addr": "",
+				"tel": ""
+			},
+			"dbRec": {
+				"id": "91742be:1501970c670:-3d",
+				"in": "95120923357",
+				"name": "Claudia Crúz Labrador",
+				"addr": "Km 10 Carretera Viñales, CPA Isidro Barre do, Viñalesdo",
+				"tel": ""
+			},
+			"src": "sigenu",
+			"exists": true,
+			"mismatch": true
+		}
+	],
+	"usrAct": null
+}
+
+`

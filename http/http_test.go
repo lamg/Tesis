@@ -273,7 +273,11 @@ func TestServ(t *testing.T) {
 	y, jsonC, clAddr, srAddr = tesis.NewDummyManager(),
 		"application/json", "https://localhost:10443",
 		":10443"
-	d, e = dbs.NewUPRManager("dtFile.json", y)
+	var rd io.Reader
+	var wr io.Writer
+	rd, wr = bytes.NewBufferString(ssJSON),
+		bytes.NewBufferString("")
+	d, e = dbs.NewUPRManager(rd, wr, y)
 	if a.NoError(t, e) {
 		go ListenAndServe(srAddr, d, "cert.pem", "key.pem")
 	}
@@ -305,3 +309,31 @@ func TestServ(t *testing.T) {
 		a.EqualValues(t, 200, rs.StatusCode)
 	}
 }
+
+var ssJSON = `
+{
+   "pending": [
+     {
+			"ldapRec": {
+				"id": "CN=Claudia Crúz Labrador,OU=4to,OU=MarxismoHistoria,OU=CRD,OU=Pregrado,OU=Estudiantes,OU=FEM,OU=Facultades,OU=_Usuarios,DC=upr,DC=edu,DC=cu",
+				"in": "",
+				"name": "Claudia Crúz Labrador",
+				"addr": "",
+				"tel": ""
+			},
+			"dbRec": {
+				"id": "91742be:1501970c670:-3d",
+				"in": "95120923357",
+				"name": "Claudia Crúz Labrador",
+				"addr": "Km 10 Carretera Viñales, CPA Isidro Barre do, Viñalesdo",
+				"tel": ""
+			},
+			"src": "sigenu",
+			"exists": true,
+			"mismatch": true
+		}
+	],
+	"usrAct": null
+}
+
+`

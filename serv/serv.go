@@ -12,7 +12,7 @@ func main() {
 	var hp, cr, ky, lda, suf, dtf *string
 	var dmy *bool
 
-	hp, cr, ky, lds, suf, dtf, dmy =
+	hp, cr, ky, lda, suf, dtf, dmy =
 		flag.String("p", ":10443", "Port to serve"),
 		flag.String("c", "cert.pem", "PEM certificate file"),
 		flag.String("k", "key.pem", "PEM key file"),
@@ -31,11 +31,14 @@ func main() {
 	if *dmy {
 		qr = tesis.NewDummyManager()
 	} else {
-		qr, e = db.NewLDAPAuth(*lds, *suf)
+		qr, e = db.NewLDAPAuth(*lda, *suf)
 	}
-
+	var fl *tesis.FileHandler
 	if e == nil {
-		um, e = db.NewUPRManager(*dtf, qr)
+		fl, e = tesis.NewFileHandler(*dtf)
+	}
+	if e == nil {
+		um, e = db.NewUPRManager(fl, fl, qr)
 	}
 	if e == nil {
 		http.ListenAndServe(*hp, um, *cr, *ky)
