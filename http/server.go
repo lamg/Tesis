@@ -81,10 +81,10 @@ func rootH(w h.ResponseWriter, r *h.Request) {
 func publH(w h.ResponseWriter, r *h.Request) {
 	var fl string
 	fl = path.Base(r.RequestURI)
-	if fl != "public" {
-		h.ServeFile(w, r, path.Join("public", fl))
-	} else {
+	if fl == "public" {
 		h.ServeFile(w, r, "public/index.html")
+	} else {
+		h.ServeFile(w, r, path.Join("public", fl))
 	}
 }
 
