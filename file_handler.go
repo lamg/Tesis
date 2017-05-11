@@ -7,10 +7,13 @@ import (
 func NewFileHandler(f string) (h *FileHandler, e error) {
 	h = new(FileHandler)
 	h.file, e = os.Open(f)
+	if os.IsNotExist(e) {
+		h.file, e = os.Create(f)
+	}
 	if e == nil {
 		h.wfle, e = os.Create(f + "~")
 	}
-	if e != nil {
+	if h.file != nil && e != nil {
 		h.file.Close()
 	}
 	return

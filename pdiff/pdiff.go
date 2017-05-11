@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"os"
 )
 
 func main() {
@@ -35,14 +34,13 @@ func main() {
 		pr = tesis.NewPRpr()
 		ds, e = db.PDiff(sg, lp, pr)
 	}
-	var fl io.ReadCloser
+	var fl io.ReadWriteCloser
 	if e == nil {
-		fl, e = os.Open(*usrDB)
+		fl, e = tesis.NewFileHandler(*usrDB)
 	}
 	var bs []byte
 	if e == nil {
 		bs, e = ioutil.ReadAll(fl)
-		fl.Close()
 	}
 	var ss *tesis.StateSys
 	if e == nil {
@@ -54,15 +52,11 @@ func main() {
 		ss.Pending = ds
 		rs, e = json.MarshalIndent(ss, "", "\t")
 	}
-	var f io.WriteCloser
 	if e == nil {
-		f, e = os.Create(*usrDB)
+		_, e = fl.Write(rs)
 	}
 	if e == nil {
-		_, e = f.Write(rs)
-	}
-	if e == nil {
-		f.Close()
+		fl.Close()
 	}
 	if e != nil {
 		log.Fatal(e)

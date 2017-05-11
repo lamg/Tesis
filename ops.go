@@ -33,18 +33,24 @@ func (ss *StateSys) SyncPend(r RecordReceptor,
 			// { ps.i is an addition }
 			e = r.Create(ps[i].LDAPRec.Name, &ps[i].DBRec)
 		}
+		// { ps.i correspondent action is done in provider }
 		if e == nil {
 			chg.SRec = append(chg.SRec, chgDiff(ps[i]))
 		} else {
 			chg.FRec = append(chg.FRec, chgDiff(ps[i]))
 		}
+		// { the change is recorded according to the result }
 		i = i + 1
 	}
 	chg.Time = time.Now()
 	ss.UsrAct[u].Proposed = convEqDiff(
-		delSuc(convDiffEq(ss.UsrAct[u].Proposed),
+		delSuc(
+			convDiffEq(ss.UsrAct[u].Proposed),
 			convDiffEq(chg.SRec)))
+	// { successfuly processed diffs are removed
+	//   from ss.UsrAct[u].Proposed }
 	ss.UsrAct[u].Record = append(ss.UsrAct[u].Record, chg)
+	// { changes are recorded in u's activity }
 	return
 }
 

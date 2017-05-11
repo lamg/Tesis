@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"os"
 )
 
 func main() {
@@ -33,10 +32,10 @@ func main() {
 	if *u == "" {
 		e = tesis.CmbE(e, "User not defined")
 	}
-	var fl io.ReadCloser
+	var fl io.ReadWriteCloser
 	if e == nil {
 		// { UserStr.u ∧ UserPass.p ∧ Filename.fname }
-		fl, e = os.Open(*fname)
+		fl, e = tesis.NewFileHandler(*fname)
 		// { UserStr.u ∧ UserPass.p ∧ io.ReaderCloser.fl
 		//   ≢ e = nil }
 	}
@@ -44,7 +43,6 @@ func main() {
 	if e == nil {
 		// { UserStr.u ∧ UserPass.p ∧ io.ReaderCloser.fl }
 		bs, e = ioutil.ReadAll(fl)
-		fl.Close()
 		// { UserStr.u ∧ UserPass.p ∧ contents.fl = bs
 		//   ≢ e = nil }
 	}
@@ -68,6 +66,17 @@ func main() {
 		// { written pending diffs to AD }
 	}
 	// { written pending diffs to AD ≢ e = nil }
+	var rs []byte
+	if e == nil {
+		rs, e = json.MarshalIndent(ss, "", "\t")
+	}
+	if e == nil {
+		_, e = fl.Write(rs)
+	}
+	if e == nil {
+		fl.Close()
+	}
+	// { written changes to ss to file ≢ e = nil }
 	if e != nil {
 		log.Fatal(e)
 	}

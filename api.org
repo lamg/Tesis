@@ -1,3 +1,13 @@
+* Commands
+- pdiff: records the current differences between
+	LDAP and the selected database. Currently only
+	updates existent records in LDAP due to ambiguous
+	specification in the case of deletions and additions
+	(these are done manually).
+- sync: reads proposed changes for each user, and
+	performs them.
+- serv: serves a web interface for proposing and
+	viewing future and past changes.
 * HTTP REST API specification
 - HTTPS server listening in 10443
 	- Done in ~http/server.go~
@@ -98,26 +108,66 @@
  if e ≠ nil → Show(e) fi
  #+END_SRC
  
-
-* Program storage interface
-	The program stores information regarding the
-	user like his name and its activity.
-	
-	The past activity is a list of changes, i.e. of records synchronized
-	and time of synchronization.  It is also a list of proposed
-	changes. Finally the present activity is a list of records the
-	system has matched for the user to propose.
-	
-	The following interface represents the storage
-	~UserInfo ∧ Record ∧ Proposed ∧ Pending~
-
 * Tasks
 - Select a directory with the proper files for testing
 	all commands
-
+- Test FileHandler
+- write changes to tesis.StateSys to file
+- get access to ldap and test in production mode
 * Rules
 - the user and passwords to access LDAP and SIGENU are env(UPR_USER)
   and env(UPR_PASS).
 - additions and deletions are disabled in tesis.DiffSym
 	due to ambiguous specification.
 
+* LDAP fields
+- Name: objectClass, V:[top person organizationalPerson user]
+- Name: cn, V:[Luis Angel Mendez Gort]                                                                                
+- Name: sn, V:[Mendez Gort]                                                                                           
+- Name: description, V:[Estudiantes 4to Informática]
+- Name: telephoneNumber, V:[791438]                                                                                   
+- Name: givenName, V:[Luis Angel]
+- Name: distinguishedName, V:[CN=Luis Angel Mendez
+  Gort,OU=5to,OU=Info,OU=CRD,OU=CRD,OU=Pregrado,
+	OU=Estudiantes,OU=FCT,OU=Facultades,OU=_Usuarios,DC=upr,
+  DC=edu,DC=cu]
+- Name: instanceType, V:[4]                                                                                           
+- Name: whenCreated, V:[20130320153339.0Z]                                                                            
+- Name: whenChanged, V:[20170131150845.0Z]                                                                            
+- Name: displayName, V:[Luis Angel Mendez Gort]                                                                       
+- Name: uSNCreated, V:[137160]                                                                                        
+- Name: memberOf,
+  V:[CN=FCT-Info5,OU=ListasEstudiantes,OU=Gestion,OU=FCT,OU=Facultades,OU=_Usuarios,DC=upr,DC=edu,DC=cu
+  CN=UPR-Correo-Internacional-Est,OU=Correo,OU=Gestion,OU=_Usuarios,DC=upr,DC=edu,DC=cu
+  CN=UPR-Jabber,OU=Jabber,OU=Gestion,OU=_Usuarios,DC=upr,DC=edu,DC=cu
+  CN=UPR-Wifi,OU=Wifi,OU=Gestion,OU=_Usuarios,DC=upr,DC=edu,DC=cu
+  CN=UPR-Internet-Especial,OU=Internet,OU=Gestion,OU=_Usuarios,DC=upr,DC=edu,DC=cu]
+- Name: uSNChanged, V:[151056895]                                                                                     
+- Name: department, V:[101]                                                                                           
+- Name: streetAddress, V:[Edificio Panel No 5 Briones Montoto, Pinar
+  del Rio, Cuba]
+- Name: name, V:[Luis Angel Mendez Gort]                                                                              
+- Name: objectGUID,
+  V:Binary
+- Name: userAccountControl, V:[512]                                                                                   
+- Name: badPwdCount, V:[0]                                                                                            
+- Name: codePage, V:[0]                                                                                               
+- Name: countryCode, V:[0]                                                                                            
+- Name: employeeID, V:[89011914982]                                                                                   
+- Name: badPasswordTime, V:[131302096065074626]                                                                       
+- Name: lastLogoff, V:[0]                                                                                             
+- Name: lastLogon, V:[131302096113199010]                                                                             
+- Name: pwdLastSet, V:[131231952220030005]                                                                            
+- Name: primaryGroupID, V:[513]                                                                                       
+- Name: objectSid, V:Binary
+- Name: accountExpires, V:[9223372036854775807]                                                                       
+- Name: logonCount, V:[44]                                                                                            
+- Name: sAMAccountName, V:[luis.mendez]                                                                               
+- Name: sAMAccountType, V:[805306368]                                                                                 
+- Name: userPrincipalName, V:[luis.mendez@estudiantes.upr.edu.cu]                                                     
+- Name: objectCategory,
+  V:[CN=Person,CN=Schema,CN=Configuration,DC=upr,DC=edu,DC=cu]
+- Name: dSCorePropagationData, V:[20160922171036.0Z 20160908134959.0Z
+  20150828155109.0Z 20150204153642.0Z 16010714042848.0Z]
+- Name: lastLogonTimestamp, V:[131303489252969568]                                                                    
+- Name: mail, V:[luis.mendez@estudiantes.upr.edu.cu]                                                                  
