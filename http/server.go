@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	h "net/http"
+	"path"
 )
 
 const (
@@ -21,6 +22,8 @@ const (
 	recrP = "/api/recr"
 	propP = "/api/prop"
 	pendP = "/api/pend"
+	rootP = "/"
+	publP = "/public/"
 )
 
 var (
@@ -56,6 +59,12 @@ func ListenAndServe(u string, d tesis.DBManager,
 		h.HandleFunc(recrP, recrH)
 		h.HandleFunc(propP, propH)
 		h.HandleFunc(pendP, pendH)
+		// { API handlers set }
+
+		h.HandleFunc(rootP, rootH)
+		h.HandleFunc(publP, publH)
+		// { static files handler set }
+
 		h.ListenAndServeTLS(u, cr, ky, nil)
 	}
 	// { started.server ≡ e = nil }
@@ -65,11 +74,26 @@ func ListenAndServe(u string, d tesis.DBManager,
 	return
 }
 
+func rootH(w h.ResponseWriter, r *h.Request) {
+	h.ServeFile(w, r, "public/index.html")
+}
+
+func publH(w h.ResponseWriter, r *h.Request) {
+	var fl string
+	fl = path.Base(r.RequestURI)
+	if fl != "public" {
+		h.ServeFile(w, r, path.Join("public", fl))
+	} else {
+		h.ServeFile(w, r, "public/index.html")
+	}
+}
+
 // { db ≠ nil ∧ pkey ≠ nil }
 func authH(w h.ResponseWriter, r *h.Request) {
 	var e error
 	var cr *tesis.Credentials
 	var bs []byte
+
 	if r.Method == h.MethodPost {
 		bs, e = ioutil.ReadAll(r.Body)
 		r.Body.Close()
@@ -109,6 +133,7 @@ func authH(w h.ResponseWriter, r *h.Request) {
 func uinfH(w h.ResponseWriter, r *h.Request) {
 	var us string
 	var e error
+
 	if r.Method == h.MethodGet {
 		us, e = parseUserName(r, &pkey.PublicKey)
 	} else {
@@ -134,6 +159,7 @@ func uinfH(w h.ResponseWriter, r *h.Request) {
 
 func recrH(w h.ResponseWriter, r *h.Request) {
 	var e error
+
 	if r.Method == h.MethodPost {
 	} else {
 		e = errUnsMeth(r.Method, recrP)
@@ -169,6 +195,7 @@ func recrH(w h.ResponseWriter, r *h.Request) {
 func propH(w h.ResponseWriter, r *h.Request) {
 	var us string
 	var e error
+
 	if r.Method == h.MethodPatch {
 		us, e = parseUserName(r, &pkey.PublicKey)
 	} else {

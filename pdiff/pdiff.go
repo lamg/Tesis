@@ -12,17 +12,16 @@ import (
 
 func main() {
 	var e error
-	var usrDB, ldapAdr, sigenuAdr, assetAdr,
+	var usrDB, ldapAdr, sigenuAdr,
 		user, pass *string
-	usrDB, ldapAdr, sigenuAdr, assetAdr, user, pass =
+	usrDB, ldapAdr, sigenuAdr, user, pass =
 		flag.String("d", "dtFile.json", "JSON formated StateSys"),
 		flag.String("la", "10.2.24.35:636", "LDAP address"),
 		flag.String("pa", "10.2.24.117/sigenu", "SIGENU address"),
-		flag.String("aa", "", "ASSET address"),
 		flag.String("us", "", "User to access databases"),
 		flag.String("ps", "", "Password to access databases")
 	flag.Parse()
-	println(*assetAdr)
+
 	var lp, sg tesis.RecordProvider
 	sg, e = db.NewPSProvider(*user, *pass, *sigenuAdr, -1)
 	if e == nil {
@@ -33,6 +32,8 @@ func main() {
 		var pr *tesis.PRpr
 		pr = tesis.NewPRpr()
 		ds, e = db.PDiff(sg, lp, pr)
+		// { ds contains inconsistent records in lp, according
+		//   sg records ≢ e = nil }
 	}
 	var fl io.ReadWriteCloser
 	if e == nil {

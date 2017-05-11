@@ -45,7 +45,7 @@ func NewPRpr() (r *PRpr) {
 }
 
 func (r *PRpr) Progress(p float32) {
-	fmt.Fprintf(os.Stderr, "%.3f%s\r", p*100, "%")
+	fmt.Fprintf(os.Stderr, "%.2f%s\r", p*100, "%")
 }
 
 func CmbE(e error, s string) (d error) {
