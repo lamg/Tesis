@@ -173,24 +173,13 @@ func (l *LDAPAuth) Close() (e error) {
 }
 
 func Search(u string, c *ldap.Conn) (n *ldap.Entry, e error) {
-	var (
-		baseDN                = "dc=upr,dc=edu,dc=cu"
-		scope                 = ldap.ScopeWholeSubtree
-		deref                 = ldap.NeverDerefAliases
-		sizel                 = 0
-		timel                 = 0
-		tpeol                 = false //TypesOnly
-		filter                = fmt.Sprintf("(&(objectClass=user)(cn=%s))", u)
-		attrs                 = []string{}
-		conts  []ldap.Control = nil //[]Control
-		s      *ldap.SearchRequest
-		r      *ldap.SearchResult
-	)
-	s = ldap.NewSearchRequest(baseDN, scope, deref,
-		sizel, timel, tpeol, filter, attrs, conts)
-	r, e = c.Search(s)
-	if e == nil && len(r.Entries) == 1 {
-		n = r.Entries[0]
+	var filter = fmt.Sprintf("(&(objectClass=user)(cn=%s))",
+		u)
+	var attrs = []string{}
+	var r []*ldap.Entry
+	r, e = SearchFilter(filter, attrs, c)
+	if e == nil && len(r) == 1 {
+		n = r[0]
 	} else if e == nil {
 		e = fmt.Errorf("La búsqueda de %s falló", u)
 	}
