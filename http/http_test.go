@@ -20,6 +20,7 @@ import (
 
 var j string //json web token
 var local = "http://localhost"
+var user = "a"
 
 func TestA(t *testing.T) {
 	var e error
@@ -42,7 +43,7 @@ func TestAuth(t *testing.T) {
 	if a.NoError(t, e) {
 		var cr *tesis.Credentials
 		r = h.NewRecorder()
-		cr = &tesis.Credentials{"a", "a"}
+		cr = &tesis.Credentials{user, "a"}
 		bs, e = json.Marshal(cr)
 	}
 	var q *http.Request
@@ -108,6 +109,7 @@ func TestUinf(t *testing.T) {
 		e = procRes(r, ui)
 	}
 	a.NoError(t, e)
+	a.Equal(t, ui.Name, user)
 }
 
 func TestUinf0(t *testing.T) {

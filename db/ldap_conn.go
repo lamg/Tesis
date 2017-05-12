@@ -147,10 +147,19 @@ func (l *LDAPAuth) Name() (s string) {
 
 func (l *LDAPAuth) UserInfo(u string) (f *tesis.UserInfo,
 	e error) {
-	var n *ldap.Entry
-	n, e = Search(u, l.c)
+	var n []*ldap.Entry
+	var filter string
+	var atts []string
+	filter, atts =
+		fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))",
+			u),
+		[]string{}
+	n, e = SearchFilter(filter, atts, l.c)
+	if len(n) == 0 {
+		e = fmt.Errorf("Busqueda de información fallo en AD")
+	}
 	if e == nil {
-		f = &tesis.UserInfo{Name: n.GetAttributeValue("CN")}
+		f = &tesis.UserInfo{Name: n[0].GetAttributeValue("CN")}
 	}
 	return
 }
