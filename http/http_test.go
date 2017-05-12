@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	h "net/http/httptest"
+
 	"testing"
 	"time"
 )
@@ -228,6 +229,18 @@ func TestPend0(t *testing.T) {
 	e = errAuth()
 	if a.NoError(t, e) {
 		a.HTTPError(t, pendH, http.MethodConnect, local, nil)
+	}
+}
+
+func TestFileServ(t *testing.T) {
+	var q *http.Request
+	var e error
+	q, e = http.NewRequest(http.MethodGet, rootP, nil)
+	var r *h.ResponseRecorder
+	if a.NoError(t, e) {
+		r = h.NewRecorder()
+		http.FileServer(http.Dir(".")).ServeHTTP(r, q)
+		a.True(t, r.Code == http.StatusOK, "Code: %d", r.Code)
 	}
 }
 

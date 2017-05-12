@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"log"
 	h "net/http"
-	"path"
 )
 
 const (
@@ -61,8 +60,7 @@ func ListenAndServe(u string, d tesis.DBManager,
 		h.HandleFunc(pendP, pendH)
 		// { API handlers set }
 
-		h.HandleFunc(rootP, rootH)
-		h.HandleFunc(publP, publH)
+		h.Handle(rootP, h.FileServer(h.Dir("public")))
 		// { static files handler set }
 
 		h.ListenAndServeTLS(u, cr, ky, nil)
@@ -72,20 +70,6 @@ func ListenAndServe(u string, d tesis.DBManager,
 		log.Print(e.Error())
 	}
 	return
-}
-
-func rootH(w h.ResponseWriter, r *h.Request) {
-	h.ServeFile(w, r, "public/index.html")
-}
-
-func publH(w h.ResponseWriter, r *h.Request) {
-	var fl string
-	fl = path.Base(r.RequestURI)
-	if fl == "public" {
-		h.ServeFile(w, r, "public/index.html")
-	} else {
-		h.ServeFile(w, r, path.Join("public", fl))
-	}
 }
 
 // { db ≠ nil ∧ pkey ≠ nil }
