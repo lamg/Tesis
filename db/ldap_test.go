@@ -61,7 +61,6 @@ func TestGetLDAPEntry(t *testing.T) {
 	var b bool
 	if a.NoError(t, e) {
 		b, e = l.Authenticate(u, p)
-
 	}
 	var r *ldap.Entry
 	if a.True(t, b, "Failed authentication") {
@@ -72,5 +71,21 @@ func TestGetLDAPEntry(t *testing.T) {
 			t.Logf("%s: %v", r.Attributes[i].Name, r.Attributes[i].Values)
 		}
 	}
+}
 
+func TestUserInfo(t *testing.T) {
+	var l *LDAPAuth
+	var e error
+	l, e = NewLDAPAuth(lda, sf)
+	var b bool
+	if a.NoError(t, e) {
+		b, e = l.Authenticate(u, p)
+	}
+	var ui *tesis.UserInfo
+	if a.True(t, b) {
+		ui, e = l.UserInfo(u)
+	}
+	if a.NoError(t, e) {
+		t.Log(ui.Name)
+	}
 }

@@ -153,13 +153,13 @@ func (l *LDAPAuth) UserInfo(u string) (f *tesis.UserInfo,
 	filter, atts =
 		fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))",
 			u),
-		[]string{}
+		[]string{"cn"}
 	n, e = SearchFilter(filter, atts, l.c)
 	if len(n) == 0 {
 		e = fmt.Errorf("Busqueda de información fallo en AD")
 	}
 	if e == nil {
-		f = &tesis.UserInfo{Name: n[0].GetAttributeValue("CN")}
+		f = &tesis.UserInfo{Name: n[0].GetAttributeValue("cn")}
 	}
 	return
 }
