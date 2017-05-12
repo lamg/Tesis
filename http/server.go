@@ -17,7 +17,6 @@ const (
 	AuthHd = "Auth"
 	//paths
 	authP = "/api/auth"
-	uinfP = "/api/uinf"
 	recrP = "/api/recr"
 	propP = "/api/prop"
 	pendP = "/api/pend"
@@ -54,7 +53,7 @@ func ListenAndServe(u string, d tesis.DBManager,
 	// { parsed.pkey ≡ e = nil }
 	if e == nil {
 		h.HandleFunc(authP, authH)
-		h.HandleFunc(uinfP, uinfH)
+
 		h.HandleFunc(recrP, recrH)
 		h.HandleFunc(propP, propH)
 		h.HandleFunc(pendP, pendH)
@@ -105,40 +104,22 @@ func authH(w h.ResponseWriter, r *h.Request) {
 		js, e = t.SignedString(pkey)
 		// { signedString.js ≡ e = nil }
 	}
-	if e == nil {
-		_, e = w.Write([]byte(js))
-		// { header set }
-	}
-	writeError(w, e)
-	// { writtenError ≢ writtenHeader }
-}
-
-// { pkey ≠ nil ∧ db ≠ nil }
-func uinfH(w h.ResponseWriter, r *h.Request) {
-	var us string
-	var e error
-
-	if r.Method == h.MethodGet {
-		us, e = parseUserName(r, &pkey.PublicKey)
-	} else {
-		e = errUnsMeth(r.Method, uinfP)
-	}
-	// { supportedMethod ≡ e = nil }
 	var ui *tesis.UserInfo
 	if e == nil {
-		ui, e = db.UserInfo(us)
+		ui, e = db.UserInfo(cr.User)
+		ui.Token = js
 	}
 	// { infoLoaded ≡ e = nil }
-	var bs []byte
+	var rs []byte
 	if e == nil {
-		bs, e = json.Marshal(ui)
+		rs, e = json.Marshal(ui)
 	}
 	// { infoMarshaled ≡ e = nil}
 	if e == nil {
-		_, e = w.Write(bs)
+		_, e = w.Write(rs)
 	}
-	// { infoWritten ≡ e = nil }
 	writeError(w, e)
+	// { writtenError ≢ writtenHeader }
 }
 
 func recrH(w h.ResponseWriter, r *h.Request) {

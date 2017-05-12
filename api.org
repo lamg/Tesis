@@ -57,6 +57,8 @@
 	}
 	UserInfo: JSON {
 	  "name": string,
+		"username": string,
+		"token": string,
 	}
 	PageN: JSON {
 	  "pageN": Nat,

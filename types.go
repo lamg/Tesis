@@ -63,6 +63,7 @@ type PageD struct {
 type UserInfo struct {
 	Name     string `json:"name"`
 	UserName string `json:"username"`
+	Token    string `json:"token"`
 }
 
 type Error struct {
