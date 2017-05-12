@@ -159,7 +159,10 @@ func (l *LDAPAuth) UserInfo(u string) (f *tesis.UserInfo,
 		e = fmt.Errorf("Busqueda de información fallo en AD")
 	}
 	if e == nil {
-		f = &tesis.UserInfo{Name: n[0].GetAttributeValue("cn")}
+		f = &tesis.UserInfo{
+			Name:     n[0].GetAttributeValue("cn"),
+			UserName: u,
+		}
 	}
 	return
 }

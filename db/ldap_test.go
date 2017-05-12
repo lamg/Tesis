@@ -85,7 +85,6 @@ func TestUserInfo(t *testing.T) {
 	if a.True(t, b) {
 		ui, e = l.UserInfo(u)
 	}
-	if a.NoError(t, e) {
-		t.Log(ui.Name)
-	}
+	a.True(t, e == nil && ui.Name != "" &&
+		ui.UserName == u)
 }
