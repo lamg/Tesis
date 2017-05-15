@@ -91,6 +91,21 @@ func TestAuth1(t *testing.T) {
 	}
 }
 
+func TestChck(t *testing.T) {
+	var e error
+	var q *http.Request
+	if a.NoError(t, e) {
+		q, e = http.NewRequest(http.MethodGet, chckP, nil)
+	}
+	var r *h.ResponseRecorder
+	if a.NoError(t, e) {
+		r = h.NewRecorder()
+		q.Header.Add(AuthHd, ui.Token)
+		chckH(r, q)
+		a.Equal(t, r.Code, http.StatusOK)
+	}
+}
+
 func TestRecr(t *testing.T) {
 	var e error
 	var bs []byte

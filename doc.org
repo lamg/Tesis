@@ -1,4 +1,5 @@
 * Commands
+** Summary
 - pdiff: records the current differences between
 	LDAP and the selected database. Currently only
 	updates existent records in LDAP due to ambiguous
@@ -8,6 +9,12 @@
 	performs them.
 - serv: serves a web interface for proposing and
 	viewing future and past changes.
+** Command pdiff
+#+BEGIN_SRC
+|[
+
+]|
+#+END_SRC
 * HTTP REST API specification
 - HTTPS server listening in 10443
 	- Done in ~http/server.go~
@@ -73,6 +80,8 @@
 | /recr  | POST-JWT-PageN            | if ok → 200-empty-PageC   ¬ok → 400-empty-Error fi |
 | /prop  | PATCH-JWT-[]Diff          | if ok → 200-empty-empty   ¬ok → 400-empty-error fi |
 | /pend  | POST-JWT-PageN            | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
+| /chck  | GET-JWT-empty             | if ok → 200-empty-empty   ¬ok → 400-empty-empty |
+
 
 
 

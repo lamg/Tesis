@@ -20,6 +20,7 @@ const (
 	recrP = "/api/recr"
 	propP = "/api/prop"
 	pendP = "/api/pend"
+	chckP = "/api/chck"
 	rootP = "/"
 	publP = "/public/"
 )
@@ -57,6 +58,7 @@ func ListenAndServe(u string, d tesis.DBManager,
 		h.HandleFunc(recrP, recrH)
 		h.HandleFunc(propP, propH)
 		h.HandleFunc(pendP, pendH)
+		h.HandleFunc(chckP, chckH)
 		// { API handlers set }
 
 		h.Handle(rootP, h.FileServer(h.Dir("public")))
@@ -122,11 +124,21 @@ func authH(w h.ResponseWriter, r *h.Request) {
 	// { writtenError ≢ writtenHeader }
 }
 
+func chckH(w h.ResponseWriter, r *h.Request) {
+	var e error
+	if r.Method != h.MethodGet {
+		e = errUnsMeth(r.Method, chckP)
+	}
+	if e == nil {
+		_, e = parseUserName(r, &pkey.PublicKey)
+	}
+	writeError(w, e)
+}
+
 func recrH(w h.ResponseWriter, r *h.Request) {
 	var e error
 
-	if r.Method == h.MethodPost {
-	} else {
+	if r.Method != h.MethodPost {
 		e = errUnsMeth(r.Method, recrP)
 	}
 	var us string
