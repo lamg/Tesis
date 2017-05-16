@@ -72,12 +72,21 @@ func (m *UPRManager) Record(u string, p int) (c *tesis.PageC, e error) {
 	return
 }
 
-func (m *UPRManager) Propose(u string, d []tesis.Diff) (e error) {
+func (m *UPRManager) Propose(u string, ds []string) (e error) {
 	if m.steSys == nil {
 		m.steSys = new(tesis.StateSys)
 	}
 	if m.steSys.UsrAct == nil {
 		m.steSys.UsrAct = make(map[string]*tesis.Activity)
+	}
+	var d []tesis.Diff
+	d = make([]tesis.Diff, 0, len(m.steSys.Pending))
+	for _, j := range m.steSys.Pending {
+		for _, k := range ds {
+			if j.DBRec.Id == k {
+				d = append(d, j)
+			}
+		}
 	}
 	var r *tesis.Activity
 	r = m.steSys.UsrAct[u]

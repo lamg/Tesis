@@ -12,7 +12,7 @@ type DBManager interface {
 	Authenticate(user, password string) (bool, error)
 	UserInfo(string) (*UserInfo, error)
 	Record(string, int) (*PageC, error)
-	Propose(string, []Diff) error
+	Propose(string, []string) error
 	Pending(int) (*PageD, error)
 }
 

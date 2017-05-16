@@ -39,16 +39,8 @@ func TestPending(t *testing.T) {
 }
 
 func TestPropose(t *testing.T) {
-	var pr []tesis.Diff
-	pr = []tesis.Diff{
-		tesis.Diff{
-			LDAPRec:  tesis.DBRecord{Id: "0", IN: "8901191122", Name: "LUIS"},
-			DBRec:    tesis.DBRecord{Id: "0", IN: "8901191122", Name: "Luis"},
-			Exists:   true,
-			Mismatch: true,
-			Src:      "SIGENU",
-		},
-	}
+	var pr []string
+	pr = []string{"0"}
 	//each proposed exists in pending
 	var um *UPRManager
 	var e error

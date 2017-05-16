@@ -148,16 +148,8 @@ func TestProp(t *testing.T) {
 	var bs []byte
 	e = errAuth()
 	if a.NoError(t, e) {
-		var ds []tesis.Diff
-		ds = []tesis.Diff{
-			tesis.Diff{
-				LDAPRec:  tesis.DBRecord{Id: "0", IN: "8901191122", Name: "LUIS"},
-				DBRec:    tesis.DBRecord{Id: "0", IN: "8901191122", Name: "Luis"},
-				Exists:   true,
-				Mismatch: true,
-				Src:      "SIGENU",
-			},
-		}
+		var ds []string
+		ds = []string{"0"}
 		bs, e = json.Marshal(ds)
 	} else {
 		e = fmt.Errorf("Auth failed %s", t.Name())

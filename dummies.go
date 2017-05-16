@@ -52,13 +52,19 @@ func (d *DummyManager) Record(u string, p int) (c *PageC, e error) {
 	return
 }
 
-func (d *DummyManager) Propose(u string, p []Diff) (e error) {
-	d.pr = append(d.pr, p...)
+func (d *DummyManager) Propose(u string, p []string) (e error) {
+	for _, j := range d.cs {
+		for _, l := range p {
+			if j.DBRec.Id == l {
+				d.pr = append(d.pr, j)
+			}
+		}
+	}
 	return
 }
 
 func (d *DummyManager) Pending(p int) (c *PageD, e error) {
-	c = &PageD{Total: 1, PageN: 1, DiffP: d.pr}
+	c = &PageD{Total: 1, PageN: 0, DiffP: d.pr}
 	return
 }
 

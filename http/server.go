@@ -183,7 +183,7 @@ func propH(w h.ResponseWriter, r *h.Request) {
 		bs, e = ioutil.ReadAll(r.Body)
 		r.Body.Close()
 	}
-	var sel []tesis.Diff
+	var sel []string
 	if e == nil {
 		e = json.Unmarshal(bs, &sel)
 	}
