@@ -2,6 +2,7 @@ package db
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/lamg/tesis"
 	"io"
 	"io/ioutil"
@@ -80,14 +81,8 @@ func (m *UPRManager) Propose(u string, ds []string) (e error) {
 		m.steSys.UsrAct = make(map[string]*tesis.Activity)
 	}
 	var d []tesis.Diff
-	d = make([]tesis.Diff, 0, len(m.steSys.Pending))
-	for _, j := range m.steSys.Pending {
-		for _, k := range ds {
-			if j.DBRec.Id == k {
-				d = append(d, j)
-			}
-		}
-	}
+	d = tesis.CreateDiff(ds)
+
 	var r *tesis.Activity
 	r = m.steSys.UsrAct[u]
 	if r == nil {
@@ -99,23 +94,11 @@ func (m *UPRManager) Propose(u string, ds []string) (e error) {
 		r.Proposed = make([]tesis.Diff, 0)
 	}
 	var f, g, h, l []tesis.Eq
-	f, g = make([]tesis.Eq, len(m.steSys.Pending)), make([]tesis.Eq, len(d))
-	for i, j := range m.steSys.Pending {
-		f[i] = j
-	}
-	for i, j := range d {
-		g[i] = j
-	}
+	f, g = tesis.ConvDiffEq(m.steSys.Pending),
+		tesis.ConvDiffEq(d)
 	h, l = tesis.DiffInt(f, g)
 	var k, n []tesis.Diff
-	k, n = make([]tesis.Diff, len(h)), make([]tesis.Diff, len(l))
-	for i, j := range h {
-		k[i] = j.(tesis.Diff)
-	}
-	for i, j := range l {
-		n[i] = j.(tesis.Diff)
-	}
-
+	k, n = tesis.ConvEqDiff(h), tesis.ConvEqDiff(l)
 	//{ k = 'k - d  ∧  n = 'k ∩ d }
 	m.steSys.Pending = k
 	r.Proposed = append(r.Proposed, n...)
@@ -132,6 +115,35 @@ func (m *UPRManager) Propose(u string, ds []string) (e error) {
 	return
 }
 
+func (m *UPRManager) Proposed(u string,
+	p int) (pd *tesis.PageD, e error) {
+	if m.steSys != nil && m.steSys.UsrAct != nil &&
+		m.steSys.UsrAct[u] != nil {
+		var a, b []interface{}
+		a, pd = ConvDiffI(m.steSys.UsrAct[u].Proposed),
+			&tesis.PageD{PageN: p}
+		b, _, _, pd.Total = pageSlice(a, 10, p)
+		pd.DiffP = ConvIDiff(b)
+	}
+	return
+}
+
+func ConvDiffI(ds []tesis.Diff) (r []interface{}) {
+	r = make([]interface{}, len(ds))
+	for i, j := range ds {
+		r[i] = j
+	}
+	return
+}
+
+func ConvIDiff(is []interface{}) (r []tesis.Diff) {
+	r = make([]tesis.Diff, len(is))
+	for i, j := range is {
+		r[i] = j.(tesis.Diff)
+	}
+	return
+}
+
 func (m *UPRManager) Pending(p int) (d *tesis.PageD, e error) {
 	var r []tesis.Diff
 	r = m.steSys.Pending //FIXME m.usrDt[u] = nil
@@ -142,20 +154,34 @@ func (m *UPRManager) Pending(p int) (d *tesis.PageD, e error) {
 		} else {
 			var t []tesis.Diff
 			var a, b []interface{}
-			a = make([]interface{}, len(r))
-			for i, j := range r {
-				a[i] = j
-			}
+			a = ConvDiffI(r)
 			var ps int
 			b, _, _, ps = pageSlice(a, m.pgLen, p)
-			t = make([]tesis.Diff, len(b))
-			for i, j := range b {
-				t[i] = j.(tesis.Diff)
-			}
+			t = ConvIDiff(b)
 			d = &tesis.PageD{Total: ps, PageN: p, DiffP: t}
 		}
 	} else {
 		d = new(tesis.PageD)
+	}
+	return
+}
+
+func (m *UPRManager) RevertProp(u string, r []string) (e error) {
+	if m.steSys == nil || m.steSys.UsrAct == nil ||
+		m.steSys.UsrAct[u] == nil {
+		e = fmt.Errorf("User %s has no activity", u)
+	} else {
+		// { m.steSys.UsrAct[u].Proposed ≠ nil }
+		var rd []tesis.Diff
+		rd = tesis.CreateDiff(r)
+		var a, b, c, e []tesis.Eq
+		a, b = tesis.ConvDiffEq(m.steSys.Pending),
+			tesis.ConvDiffEq(rd)
+		c, e = tesis.DiffInt(a, b)
+		m.steSys.Pending, m.steSys.UsrAct[u].Proposed =
+			tesis.ConvEqDiff(c),
+			append(m.steSys.UsrAct[u].Proposed,
+				tesis.ConvEqDiff(e)...)
 	}
 	return
 }

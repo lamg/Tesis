@@ -21,6 +21,7 @@ const (
 	propP = "/api/prop"
 	pendP = "/api/pend"
 	chckP = "/api/chck"
+	revpP = "/api/revp"
 	rootP = "/"
 	publP = "/public/"
 )
@@ -59,6 +60,7 @@ func ListenAndServe(u string, d tesis.DBManager,
 		h.HandleFunc(propP, propH)
 		h.HandleFunc(pendP, pendH)
 		h.HandleFunc(chckP, chckH)
+		h.HandleFunc(revpP, revpH)
 		// { API handlers set }
 
 		h.Handle(rootP, h.FileServer(h.Dir("public")))
@@ -172,9 +174,12 @@ func recrH(w h.ResponseWriter, r *h.Request) {
 func propH(w h.ResponseWriter, r *h.Request) {
 	var us string
 	var e error
-
-	if r.Method == h.MethodPatch {
+	var patch, post bool
+	patch, post = r.Method == h.MethodPatch,
+		r.Method == h.MethodPost
+	if patch || post {
 		us, e = parseUserName(r, &pkey.PublicKey)
+
 	} else {
 		e = errUnsMeth(r.Method, propP)
 	}
@@ -183,12 +188,27 @@ func propH(w h.ResponseWriter, r *h.Request) {
 		bs, e = ioutil.ReadAll(r.Body)
 		r.Body.Close()
 	}
-	var sel []string
-	if e == nil {
+	if e == nil && patch {
+		var sel []string
 		e = json.Unmarshal(bs, &sel)
-	}
-	if e == nil {
-		e = db.Propose(us, sel)
+		if e == nil {
+			e = db.Propose(us, sel)
+		}
+	} else if post {
+		var pn *tesis.PageN
+		pn = new(tesis.PageN)
+		e = json.Unmarshal(bs, pn)
+		var pd *tesis.PageD
+		if e == nil {
+			pd, e = db.Proposed(us, pn.PageN)
+		}
+		var rs []byte
+		if e == nil {
+			rs, e = json.Marshal(pd)
+		}
+		if e == nil {
+			_, e = w.Write(rs)
+		}
 	}
 	writeError(w, e)
 }
@@ -218,6 +238,30 @@ func pendH(w h.ResponseWriter, r *h.Request) {
 	}
 	if e == nil {
 		_, e = w.Write(rs)
+	}
+	writeError(w, e)
+}
+
+func revpH(w h.ResponseWriter, r *h.Request) {
+	var us string
+	var e error
+
+	if r.Method == h.MethodPatch {
+		us, e = parseUserName(r, &pkey.PublicKey)
+	} else {
+		e = errUnsMeth(r.Method, propP)
+	}
+	var bs []byte
+	if e == nil {
+		bs, e = ioutil.ReadAll(r.Body)
+		r.Body.Close()
+	}
+	var sel []string
+	if e == nil {
+		e = json.Unmarshal(bs, &sel)
+	}
+	if e == nil {
+		db.RevertProp(us, sel)
 	}
 	writeError(w, e)
 }

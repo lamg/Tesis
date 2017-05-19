@@ -13,7 +13,9 @@ type DBManager interface {
 	UserInfo(string) (*UserInfo, error)
 	Record(string, int) (*PageC, error)
 	Propose(string, []string) error
+	Proposed(string, int) (*PageD, error)
 	Pending(int) (*PageD, error)
+	RevertProp(string, []string) error
 }
 
 type RecordProvider interface {

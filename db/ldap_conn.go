@@ -19,23 +19,7 @@ const (
 	CN                = "cn"
 )
 
-type LDAPRecp struct {
-	c *ldap.Conn
-}
-
-func NewLDAPRecp(adr, u,
-	p string) (r tesis.RecordReceptor, e error) {
-	var cfg *tls.Config
-	var l *LDAPRecp
-	cfg, l = &tls.Config{InsecureSkipVerify: true},
-		new(LDAPRecp)
-
-	l.c, e = ldap.DialTLS("tcp", adr, cfg)
-	r = l
-	return
-}
-
-func (l *LDAPRecp) Create(dn string,
+func (l *LDAPAuth) Create(dn string,
 	d *tesis.DBRecord) (e error) {
 	var rq *ldap.AddRequest
 
@@ -48,19 +32,24 @@ func (l *LDAPRecp) Create(dn string,
 	return
 }
 
-func (l *LDAPRecp) Update(dn string,
+func (l *LDAPAuth) Update(us string,
 	d *tesis.DBRecord) (e error) {
-	var rq *ldap.ModifyRequest
-	rq = ldap.NewModifyRequest(dn)
-	rq.Add(IN, []string{d.IN})
-	rq.Add(CN, []string{d.Name})
-	rq.Add(streetAddress, []string{d.Addr})
-	rq.Add(telephoneNumber, []string{d.Tel})
-	e = l.c.Modify(rq)
+	var dn string
+	dn, e = SearchDN(us, l.c)
+	if e == nil {
+		// dn is us distinguished name
+		var rq *ldap.ModifyRequest
+		rq = ldap.NewModifyRequest(dn)
+		rq.Add(IN, []string{d.IN})
+		rq.Add(CN, []string{d.Name})
+		rq.Add(streetAddress, []string{d.Addr})
+		rq.Add(telephoneNumber, []string{d.Tel})
+		e = l.c.Modify(rq)
+	}
 	return
 }
 
-func (l *LDAPRecp) Delete(dn string) (e error) {
+func (l *LDAPAuth) Delete(dn string) (e error) {
 	//var rq *ldap.DelRequest
 	//change distinguished name to move the record
 	//to another part of the LDAP tree
@@ -147,21 +136,37 @@ func (l *LDAPAuth) Name() (s string) {
 
 func (l *LDAPAuth) UserInfo(u string) (f *tesis.UserInfo,
 	e error) {
-	var n []*ldap.Entry
+	var n *ldap.Entry
 	var filter string
 	var atts []string
 	filter, atts =
 		fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))",
 			u),
 		[]string{"cn"}
-	n, e = SearchFilter(filter, atts, l.c)
-	if len(n) == 0 {
-		e = fmt.Errorf("Busqueda de información fallo en AD")
-	}
+	n, e = SearchOne(filter, atts, l.c)
 	if e == nil {
 		f = &tesis.UserInfo{
-			Name:     n[0].GetAttributeValue("cn"),
+			Name:     n.GetAttributeValue("cn"),
 			UserName: u,
+		}
+	}
+	return
+}
+
+func (l *LDAPAuth) UserRecord(us string) (d *tesis.DBRecord, e error) {
+	var ats []string
+	var flr string
+	var n *ldap.Entry
+	flr, ats = fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))", us),
+		[]string{CN, DN, IN, streetAddress, telephoneNumber}
+	n, e = SearchOne(flr, ats, l.c)
+	if e == nil {
+		d = &tesis.DBRecord{
+			Id:   n.GetAttributeValue(DN),
+			IN:   n.GetAttributeValue(IN),
+			Name: n.GetAttributeValue(CN),
+			Addr: n.GetAttributeValue(streetAddress),
+			Tel:  n.GetAttributeValue(telephoneNumber),
 		}
 	}
 	return
@@ -172,18 +177,20 @@ func (l *LDAPAuth) Close() (e error) {
 	return
 }
 
-func Search(u string, c *ldap.Conn) (n *ldap.Entry, e error) {
+func Search(u string, c *ldap.Conn) (av []string, e error) {
 	var filter = fmt.Sprintf("(&(objectClass=user)(cn=%s))",
 		u)
 	var attrs = []string{}
-	var r []*ldap.Entry
-	r, e = SearchFilter(filter, attrs, c)
-	if e == nil && len(r) == 1 {
-		n = r[0]
-	} else if e == nil {
-		e = fmt.Errorf("La búsqueda de %s falló", u)
+	var n *ldap.Entry
+	n, e = SearchOne(filter, attrs, c)
+	if e == nil {
+		av = make([]string, 0, len(n.Attributes))
+		for i := range n.Attributes {
+			av = append(av, fmt.Sprintf("%s: %v",
+				n.Attributes[i].Name,
+				n.Attributes[i].Values))
+		}
 	}
-	// { attributes.u.n ≡ e = nil }
 	return
 }
 
@@ -218,6 +225,34 @@ func (l *LDAPAuth) Records() (us []tesis.DBRecord, e error) {
 		}
 		if r.Name != "" && r.Id != "" {
 			us = append(us, r)
+		}
+	}
+	return
+}
+
+func SearchDN(user string, c *ldap.Conn) (dn string, e error) {
+	var n *ldap.Entry
+	var filter string
+	var atts []string
+	filter, atts =
+		fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))",
+			user),
+		[]string{DN}
+	n, e = SearchOne(filter, atts, c)
+	if e == nil {
+		dn = n.GetAttributeValue(DN)
+	}
+	return
+}
+
+func SearchOne(f string, ats []string, c *ldap.Conn) (n *ldap.Entry, e error) {
+	var ns []*ldap.Entry
+	ns, e = SearchFilter(f, ats, c)
+	if e == nil {
+		if len(ns) == 1 {
+			n = ns[0]
+		} else {
+			e = fmt.Errorf("Result length = %d", len(ns))
 		}
 	}
 	return

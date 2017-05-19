@@ -25,7 +25,7 @@ var user = "a"
 func TestA(t *testing.T) {
 	var e error
 	var bs []byte
-	db = &tesis.DummyManager{}
+	db = tesis.NewDummyManager()
 	bs, e = ioutil.ReadFile("key.pem")
 	// { loaded.key.bs ≡ e = nil }
 	if a.NoError(t, e) {
@@ -131,8 +131,8 @@ func TestRecr(t *testing.T) {
 		recrH(r, q)
 		pc = new(tesis.PageC)
 		e = procRes(r, pc)
+		a.True(t, e == nil && pc.PageN == 0 && pc.Total == 0)
 	}
-	a.NoError(t, e)
 }
 
 func TestRecr0(t *testing.T) {
@@ -146,7 +146,11 @@ func TestRecr0(t *testing.T) {
 func TestProp(t *testing.T) {
 	var e error
 	var bs []byte
-	e = errAuth()
+	e, db = errAuth(), tesis.NewDummyManager()
+	var len0 int
+	var pd0 *tesis.PageD
+	pd0, _ = db.Pending(0)
+	len0 = len(pd0.DiffP)
 	if a.NoError(t, e) {
 		var ds []string
 		ds = []string{"0"}
@@ -166,9 +170,14 @@ func TestProp(t *testing.T) {
 		q.Header.Add(AuthHd, ui.Token)
 		propH(r, q)
 	}
-	a.True(t, e == nil &&
+	if a.True(t, e == nil &&
 		r.Code == http.StatusOK &&
-		r.Body.Len() == 0)
+		r.Body.Len() == 0) {
+		var pd *tesis.PageD
+		pd, e = db.Pending(0)
+		a.True(t, e == nil && len(pd.DiffP) == len0-1,
+			"len(pd.DiffP): %d", len(pd.DiffP))
+	}
 }
 
 func TestProp0(t *testing.T) {
@@ -176,6 +185,34 @@ func TestProp0(t *testing.T) {
 	e = errAuth()
 	if a.NoError(t, e) {
 		a.HTTPError(t, propH, http.MethodConnect, local, nil)
+	}
+}
+
+func TestProp1(t *testing.T) {
+	db = tesis.NewDummyManager()
+	db.Propose(user, []string{"0"})
+	var pn *tesis.PageN
+	pn = &tesis.PageN{PageN: 0}
+	var e error
+	var bs []byte
+	bs, e = json.Marshal(pn)
+	if a.NoError(t, e) {
+		var rd io.Reader
+		rd = bytes.NewReader(bs)
+		var r *h.ResponseRecorder
+		var q *http.Request
+		r, q = h.NewRecorder(), h.NewRequest(http.MethodPost,
+			propP, rd)
+		q.Header.Add(AuthHd, ui.Token)
+		propH(r, q)
+		var pd *tesis.PageD
+		pd = new(tesis.PageD)
+		e = json.Unmarshal(r.Body.Bytes(), pd)
+		if !a.True(t, e == nil && len(pd.DiffP) == 1) {
+			if pd != nil {
+				t.Logf("len(pd.DiffP) = %d", len(pd.DiffP))
+			}
+		}
 	}
 }
 
@@ -221,6 +258,53 @@ func TestFileServ(t *testing.T) {
 		r = h.NewRecorder()
 		http.FileServer(http.Dir(".")).ServeHTTP(r, q)
 		a.True(t, r.Code == http.StatusOK, "Code: %d", r.Code)
+	}
+}
+
+func TestRevr(t *testing.T) {
+
+	var ds []string
+	ds = []string{"0"}
+	db = tesis.NewDummyManager()
+	var len0 int
+	var pd0 *tesis.PageD
+	pd0, _ = db.Pending(0)
+	len0 = len(pd0.DiffP)
+	db.Propose(user, ds)
+
+	var e error
+	var r *h.ResponseRecorder
+	var q *http.Request
+	e = errAuth()
+	var bs []byte
+	if a.NoError(t, e) {
+		bs, e = json.Marshal(ds)
+	}
+	var bdy io.Reader
+	if a.NoError(t, e) {
+		bdy = bytes.NewReader(bs)
+	}
+	if a.NoError(t, e) {
+		r, q = h.NewRecorder(),
+			h.NewRequest(http.MethodPatch, revpP, bdy)
+		q.Header.Add(AuthHd, ui.Token)
+		revpH(r, q)
+		// { i ∈ db.Proposed' ∧ i.DBRec.Id = "0" ∧
+		//   i ∉ db.Proposed ∧ i ∈ db.Pending }
+		a.True(t, r.Code == http.StatusOK)
+		var pp, pe *tesis.PageD
+		pe, _ = db.Pending(0)
+		pp, _ = db.Proposed(user, 0)
+		a.NoError(t, e)
+
+		if !a.True(t, len(pe.DiffP) == len0 &&
+			len(pp.DiffP) == 0) {
+			t.Logf("%d = %d ≡ %t", len(pe.DiffP), len0,
+				len(pe.DiffP) == len0)
+			t.Log(pe)
+			t.Log(pp)
+		}
+
 	}
 }
 

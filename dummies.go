@@ -26,7 +26,7 @@ func NewDummyManager() (m *DummyManager) {
 				Src:      "SIGENU",
 			},
 			Diff{
-				LDAPRec:  DBRecord{Id: "1", IN: "9001191122", Name: "Coco"},
+				LDAPRec:  DBRecord{Id: "2", IN: "9001191122", Name: "Pepe"},
 				Exists:   true,
 				Mismatch: false,
 				Src:      "SIGENU",
@@ -53,24 +53,72 @@ func (d *DummyManager) Record(u string, p int) (c *PageC, e error) {
 }
 
 func (d *DummyManager) Propose(u string, p []string) (e error) {
-	for _, j := range d.cs {
-		for _, l := range p {
-			if j.DBRec.Id == l {
-				d.pr = append(d.pr, j)
-			}
-		}
-	}
+	var ds []Diff
+	ds = CreateDiff(p)
+	var f, g, h, l []Eq
+	f, g = ConvDiffEq(d.cs), ConvDiffEq(ds)
+	h, l = DiffInt(f, g)
+	var k, m []Diff
+	k, m = ConvEqDiff(h), ConvEqDiff(l)
+	d.cs, d.pr = k, m
+	return
+}
+
+func (d *DummyManager) Proposed(u string,
+	p int) (pd *PageD,
+	e error) {
+	pd = &PageD{Total: 1, PageN: 0, DiffP: d.pr}
 	return
 }
 
 func (d *DummyManager) Pending(p int) (c *PageD, e error) {
-	c = &PageD{Total: 1, PageN: 0, DiffP: d.pr}
+	c = &PageD{Total: 1, PageN: 0, DiffP: d.cs}
+	return
+}
+
+func (d *DummyManager) RevertProp(u string,
+	p []string) (er error) {
+	var pd []Diff
+	pd = CreateDiff(p)
+	var a, b, c, e []Eq
+	a, b = ConvDiffEq(d.pr), ConvDiffEq(pd)
+	c, e = DiffInt(a, b)
+	d.pr, d.cs = ConvEqDiff(c), append(d.cs,
+		ConvEqDiff(e)...)
+	return
+}
+
+func CreateDiff(p []string) (ds []Diff) {
+	ds = make([]Diff, len(p))
+	for i, j := range p {
+		ds[i] = Diff{
+			DBRec: DBRecord{
+				Id: j,
+			},
+		}
+	}
 	return
 }
 
 func (d *DummyManager) Synchronize() (e error) {
 	d.cs, e = RmEq(d.cs, d.pr)
 	//save removed to record
+	return
+}
+
+func ConvDiffEq(ds []Diff) (es []Eq) {
+	es = make([]Eq, len(ds))
+	for i, j := range ds {
+		es[i] = j
+	}
+	return
+}
+
+func ConvEqDiff(es []Eq) (ds []Diff) {
+	ds = make([]Diff, len(es))
+	for i, j := range es {
+		ds[i] = j.(Diff)
+	}
 	return
 }
 

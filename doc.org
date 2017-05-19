@@ -79,9 +79,10 @@
 | /uinf  | GET-JWT-empty             | if ok → 200-empty-UserInfo   ¬ok → 400-empty-error fi |
 | /recr  | POST-JWT-PageN            | if ok → 200-empty-PageC   ¬ok → 400-empty-Error fi |
 | /prop  | PATCH-JWT-[]string        | if ok → 200-empty-empty   ¬ok → 400-empty-error fi |
+| /prop  | POST-JWT-PageN            | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
 | /pend  | POST-JWT-PageN            | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
 | /chck  | GET-JWT-empty             | if ok → 200-empty-empty   ¬ok → 400-empty-empty |
-
+| /revr  | PATCH-JWT-[]string        | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
 - The frontend is the following multiprogram
 	
  #+BEGIN_SRC
@@ -117,11 +118,10 @@
  #+END_SRC
  
 * Tasks
-- Select a directory with the proper files for testing
-	all commands
-- Test FileHandler
+- Test RevertProp
 - write changes to tesis.StateSys to file
 - get access to ldap and test in production mode
+- 
 * Rules
 - the user and passwords to access LDAP and SIGENU are env(UPR_USER)
   and env(UPR_PASS).
