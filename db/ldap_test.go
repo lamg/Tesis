@@ -3,7 +3,6 @@ package db
 import (
 	"github.com/lamg/tesis"
 	a "github.com/stretchr/testify/assert"
-	"os"
 	"testing"
 )
 
@@ -17,7 +16,7 @@ const (
 var u, p string
 
 func init() {
-	u, p = os.Getenv("UPR_USER"), os.Getenv("UPR_PASS")
+	u, p = "Administrator", "$adButTrue"
 }
 
 func TestLDAPAuth(t *testing.T) {
@@ -101,7 +100,7 @@ func TestUpdate(t *testing.T) {
 		dr = &tesis.DBRecord{
 			Name: "Luis Ángel Méndez Gort",
 			IN:   "89011914982",
-			Addr: "Briones",
+			Addr: "Briones Montoto",
 			Tel:  "48791438",
 		}
 		e = r.Update("luis.mendez", dr)
@@ -111,6 +110,7 @@ func TestUpdate(t *testing.T) {
 		rc, e = r.UserRecord("luis.mendez")
 	}
 	if a.NoError(t, e) {
-		a.True(t, dr.Equals(rc))
+		a.True(t, dr.IN == rc.IN && dr.Addr == rc.Addr &&
+			dr.Tel == rc.Tel)
 	}
 }

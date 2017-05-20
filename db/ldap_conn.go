@@ -16,7 +16,9 @@ const (
 	streetAddress     = "streetAddress"
 	telephoneNumber   = "telephoneNumber"
 	DN                = "distinguishedName"
+	name              = "name"
 	CN                = "cn"
+	displayName       = "displayName"
 )
 
 func (l *LDAPAuth) Create(dn string,
@@ -40,10 +42,10 @@ func (l *LDAPAuth) Update(us string,
 		// dn is us distinguished name
 		var rq *ldap.ModifyRequest
 		rq = ldap.NewModifyRequest(dn)
-		rq.Add(IN, []string{d.IN})
-		rq.Add(CN, []string{d.Name})
-		rq.Add(streetAddress, []string{d.Addr})
-		rq.Add(telephoneNumber, []string{d.Tel})
+		rq.Replace(IN, []string{d.IN})
+		rq.Replace(displayName, []string{d.Name})
+		rq.Replace(streetAddress, []string{d.Addr})
+		rq.Replace(telephoneNumber, []string{d.Tel})
 		e = l.c.Modify(rq)
 	}
 	return
