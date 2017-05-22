@@ -278,6 +278,7 @@ func parseUserName(r *h.Request, p *rsa.PublicKey) (us string, e error) {
 	var ts string
 	var t *jwt.Token
 	ts = r.Header.Get(AuthHd)
+	log.Printf("token: %s", ts)
 	// { readHeader.jwt ≡ e = nil }
 	t, e = jwt.Parse(ts,
 		func(x *jwt.Token) (a interface{}, d error) {
