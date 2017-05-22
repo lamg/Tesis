@@ -2,7 +2,7 @@ package tesis
 
 // This algorithm is a "descendant" of DiffInt
 // c = a - b
-// d and e are the couples of similar elements
+// d and e are the couples of similar not equal elements
 // f = b - c
 func DiffSym(a, b []Sim, rp Reporter) (c, d, e, f []Sim) {
 	var i, j, k, l int //i,j for a and k,l for b
@@ -25,7 +25,9 @@ func DiffSym(a, b []Sim, rp Reporter) (c, d, e, f []Sim) {
 			if ra {
 				// { a.i ∈ a ∩ b }
 				// a.i and b.j are equal ∨ a.i and b.j are similar
-				d, e = append(d, a[i]), append(e, b[j])
+				if !a[i].Equals(b[j]) {
+					d, e = append(d, a[i]), append(e, b[j])
+				}
 				// a.i and b.j are equal ∨ a.i and b.j are
 				// stored in correspondent indexes of d and e
 				i = i + 1
@@ -100,6 +102,22 @@ func DiffInt(a, b []Eq) (c, e []Eq) {
 		}
 	}
 	// { c = a - b ∧ e = a ∩ b }
+	return
+}
+
+func ConvSim(s []DBRecord) (r []Sim) {
+	r = make([]Sim, len(s))
+	for i, j := range s {
+		r[i] = j
+	}
+	return
+}
+
+func ConvDBR(s []Sim) (r []DBRecord) {
+	r = make([]DBRecord, len(s))
+	for i, j := range s {
+		r[i] = j.(DBRecord)
+	}
 	return
 }
 

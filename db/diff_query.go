@@ -13,13 +13,13 @@ func PDiff(dbProv, ldProv tesis.RecordProvider,
 	}
 	var g, h, x, y []tesis.Sim
 	if e == nil {
-		x, y = convSim(st), convSim(us)
+		x, y = tesis.ConvSim(st), tesis.ConvSim(us)
 		_, g, h, _ = tesis.DiffSym(x, y, rp)
 		// { ¬ (g,h contain equal couples) }
 	}
 	var k, l []tesis.DBRecord
 	if e == nil {
-		k, l = convDBR(g), convDBR(h)
+		k, l = tesis.ConvDBR(g), tesis.ConvDBR(h)
 		/*ds = make([]tesis.Diff, 0, len(j)+len(k)+len(m))
 		for _, jx := range j {
 			ds = append(ds, tesis.Diff{
@@ -50,22 +50,6 @@ func PDiff(dbProv, ldProv tesis.RecordProvider,
 		}*/
 		// { ds contains LDAP deletions }
 		// { ds contains all pending operations for dbProv }
-	}
-	return
-}
-
-func convSim(s []tesis.DBRecord) (r []tesis.Sim) {
-	r = make([]tesis.Sim, len(s))
-	for i, j := range s {
-		r[i] = j
-	}
-	return
-}
-
-func convDBR(s []tesis.Sim) (r []tesis.DBRecord) {
-	r = make([]tesis.DBRecord, len(s))
-	for i, j := range s {
-		r[i] = j.(tesis.DBRecord)
 	}
 	return
 }

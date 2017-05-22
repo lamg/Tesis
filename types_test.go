@@ -6,17 +6,62 @@ import (
 )
 
 func TestDiffSym(t *testing.T) {
-	var v, w, x, y, z []Nat
-	v, w, x, y, z = []Nat{1, 2, 3, 4, 5}, []Nat{2, 4, 18},
-		[]Nat{1, 3, 5}, []Nat{2, 4}, []Nat{18}
+	//this proof has no sense for naturals
+	var db0, db1, db2, db3, db4 DBRecord
+	db0, db1, db2, db3, db4 = DBRecord{
+		Id:   "516648e2:14fd74554bc:-2309",
+		IN:   "95041823862",
+		Name: "Yansel Acosta Sarabia",
+		Addr: "Ave del Valle",
+		Tel:  "448416",
+	}, DBRecord{
+		Name: "Yansel Acosta Sarabia",
+	}, DBRecord{
+		Id:   "-3457f221:13292017856:-6c8e",
+		IN:   "91050527469",
+		Name: "Yasniel Salabarría Castellanos",
+		Addr: "Edif. E 14 Apto 40. López Peña",
+		Tel:  "565458",
+	}, DBRecord{
+		IN:   "91050527469",
+		Name: "Yasniel Salabarria Castellanos",
+		Addr: "Edif. E 14 Apto 40. Lopez Pena, Artemisa, Cuba",
+		Tel:  "565458",
+	}, DBRecord{
+		Name: "Coco",
+	}
+
+	var v, w, x, y, z []DBRecord
+	v, w, x, y, z = []DBRecord{
+		db0,
+		db2,
+		db4,
+	},
+		[]DBRecord{
+			db1,
+			db3,
+		},
+		[]DBRecord{
+			db4,
+		}, []DBRecord{
+			db0,
+			db2,
+		}, []DBRecord{
+			db1,
+			db3,
+		}
 	// x = v - w ∧ y = v ∩ w ∧ z = w - x
 	var a, b, c, d, e, f []Sim
-	a, b = conv(v), conv(w)
+	a, b = ConvSim(v), ConvSim(w)
 	var rp *TRpr
 	rp = NewTRpr(t)
 	c, d, e, f = DiffSym(a, b, rp)
-	assert.True(t, eqnat(x, c) &&
-		eqnat(y, d) && eqnat(y, e) && eqnat(z, f))
+	assert.True(t, eqsim(x, c))
+	assert.True(t, eqsim(y, d))
+	assert.True(t, eqsim(y, e))
+	// error if but not significative
+	// since PDiff ignores c and
+	assert.True(t, eqsim(z, f))
 }
 
 func conv(x []Nat) (y []Sim) {
@@ -27,11 +72,11 @@ func conv(x []Nat) (y []Sim) {
 	return
 }
 
-func eqnat(x []Nat, y []Sim) (b bool) {
+func eqsim(x []DBRecord, y []Sim) (b bool) {
 	var i int
 	i = 0
 	if len(x) == len(y) {
-		for i != len(x) && x[i].Equals(y[i]) {
+		for i != len(x) && x[i].Similar(y[i]) {
 			i = i + 1
 		}
 	}

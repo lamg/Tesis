@@ -56,7 +56,8 @@ func CmbE(e error, s string) (d error) {
 func (d DBRecord) Equals(c interface{}) (b bool) {
 	var x DBRecord
 	x, b = c.(DBRecord)
-	b = b && x.Id == d.Id
+	b = b && x.Name == d.Name && x.IN == d.IN &&
+		x.Addr == d.Addr && x.Tel == d.Tel
 	return
 }
 
