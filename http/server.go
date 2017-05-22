@@ -2,6 +2,7 @@
 package http
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
@@ -278,7 +279,10 @@ func parseUserName(r *h.Request, p *rsa.PublicKey) (us string, e error) {
 	var ts string
 	var t *jwt.Token
 	ts = r.Header.Get(AuthHd)
-	log.Printf("token: %s", ts)
+	var wr *bytes.Buffer
+	wr = bytes.NewBufferString("")
+	r.Header.Write(wr)
+	log.Printf("header: %s", wr.String())
 	// { readHeader.jwt ≡ e = nil }
 	t, e = jwt.Parse(ts,
 		func(x *jwt.Token) (a interface{}, d error) {
