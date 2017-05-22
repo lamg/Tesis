@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/lamg/tesis"
 	"github.com/lamg/tesis/db"
 	"io"
@@ -12,20 +13,29 @@ import (
 
 func main() {
 	var e error
-	var usrDB, ldapAdr, sigenuAdr,
-		user, pass *string
-	usrDB, ldapAdr, sigenuAdr, user, pass =
+	var usrDB, ldapAdr, sigenuAdr, assetAdr,
+		us, ps, ua, pa *string //user database, password database,
+	//user AD, pasword AD
+	usrDB, ldapAdr, sigenuAdr, assetAdr, us, ps, ua, pa =
 		flag.String("d", "dtFile.json", "JSON formated StateSys"),
 		flag.String("la", "10.2.24.35:636", "LDAP address"),
-		flag.String("pa", "10.2.24.117/sigenu", "SIGENU address"),
-		flag.String("us", "", "User to access databases"),
-		flag.String("ps", "", "Password to access databases")
-	flag.Parse()
+		flag.String("sa", "10.2.24.117/sigenu", "SIGENU address"),
+		flag.String("aa", "", "ASSET address"),
+		flag.String("us", "", "User to access database"),
+		flag.String("ps", "", "Password to access database"),
+		flag.String("ua", "", "User to access AD"),
+		flag.String("pa", "", "Password to access AD")
 
+	flag.Parse()
+	if *assetAdr != "" {
+		e = fmt.Errorf("ASSET synchronization not implemented")
+	}
 	var lp, sg tesis.RecordProvider
-	sg, e = db.NewPSProvider(*user, *pass, *sigenuAdr, -1)
 	if e == nil {
-		lp, e = db.NewLDAPProv(*user, *pass, *ldapAdr, -1)
+		sg, e = db.NewPSProvider(*us, *ps, *sigenuAdr, -1)
+	}
+	if e == nil {
+		lp, e = db.NewLDAPProv(*ua, *pa, *ldapAdr, -1)
 	}
 	var ds []tesis.Diff
 	if e == nil {
@@ -46,7 +56,7 @@ func main() {
 	var ss *tesis.StateSys
 	if e == nil {
 		ss = new(tesis.StateSys)
-		e = json.Unmarshal(bs, ss)
+		json.Unmarshal(bs, ss)
 	}
 	var rs []byte
 	if e == nil {

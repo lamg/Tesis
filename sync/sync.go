@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/lamg/tesis"
 	"github.com/lamg/tesis/db"
 	"io"
@@ -12,12 +13,13 @@ import (
 
 func main() {
 	var e error
-	var u, p, fname, rAdr *string
-	u, p, fname, rAdr =
+	var u, p, fname, rAdr, sf *string
+	u, p, fname, rAdr, sf =
 		flag.String("u", "", "User"),
 		flag.String("p", "", "Password"),
 		flag.String("f", "", "StateSystem file"),
-		flag.String("rAdr", "", "Receiver address")
+		flag.String("rAdr", "", "Receiver address"),
+		flag.String("sf", "", "Suffix of AD receiver")
 
 	flag.Parse()
 	if *rAdr == "" {
@@ -55,15 +57,33 @@ func main() {
 	}
 	var rcp tesis.RecordReceptor
 	if e == nil {
-		// { UserStr.u ∧ UserPass.p ∧ Address.rAdr }
-		rcp, e = db.NewLDAPRecp(*rAdr, *u, *p)
+		var l *db.LDAPAuth
+		// { UserStr.u ∧ UserPass.p ∧ Address.rAdr ∧ Suff.sf }
+		l, e = db.NewLDAPAuth(*rAdr, *sf)
+		var b bool
+		if e == nil {
+			b, e = l.Authenticate(*u, *p)
+		}
+		if b {
+			rcp = l
+		} else {
+			e = fmt.Errorf("Failed authentication")
+		}
 		// { UserStr.u ∧ RecordReceptor.rcp ∧
 		//   StateSys.ss ≢ e = nil }
 	}
-	if e == nil {
+	println("ok")
+	if e == nil && ss.UsrAct != nil &&
+		ss.UsrAct[*u] != nil &&
+		ss.UsrAct[*u].Proposed != nil &&
+		len(ss.UsrAct[*u].Proposed) != 0 {
 		// { RecordReceptor.rcp ∧ UserStr.u ∧ StateSys.ss }
-		e = ss.SyncPend(rcp, *u)
+		var pr tesis.Reporter
+		pr = tesis.NewPRpr()
+		e = ss.SyncPend(rcp, *u, pr)
 		// { written pending diffs to AD }
+	} else if e == nil {
+		log.Printf("No proposed changes for %s", *u)
 	}
 	// { written pending diffs to AD ≢ e = nil }
 	var rs []byte

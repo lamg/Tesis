@@ -235,6 +235,7 @@ func TestPend(t *testing.T) {
 	var pd *tesis.PageD
 	if a.NoError(t, e) {
 		r, pd = h.NewRecorder(), new(tesis.PageD)
+		q.Header.Add(AuthHd, ui.Token)
 		pendH(r, q)
 		e = procRes(r, pd)
 	}

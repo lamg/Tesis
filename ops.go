@@ -5,7 +5,7 @@ import (
 )
 
 func (ss *StateSys) SyncPend(r RecordReceptor,
-	u string) (e error) {
+	u string, rp Reporter) (e error) {
 	var i int
 	var ps []Diff
 	var chg Change
@@ -23,21 +23,24 @@ func (ss *StateSys) SyncPend(r RecordReceptor,
 		FRec: make([]Diff, 0),
 	}
 	for i != len(ps) {
+		var prc float32
+		prc = float32(i) / float32(len(ps))
+		rp.Progress(prc)
 		if ps[i].Exists && ps[i].Mismatch {
 			// { ps.i is an inconsistency }
-			e = r.Update(ps[i].LDAPRec.Name, &ps[i].DBRec)
+			e = r.Update(ps[i].LDAPRec.Id, &ps[i].DBRec)
 		} else if ps[i].Exists && !ps[i].Mismatch {
 			// { ps.i is a deletion }
-			e = r.Delete(ps[i].LDAPRec.Name)
+			e = r.Delete(ps[i].LDAPRec.Id)
 		} else if !ps[i].Exists {
 			// { ps.i is an addition }
-			e = r.Create(ps[i].LDAPRec.Name, &ps[i].DBRec)
+			e = r.Create(ps[i].LDAPRec.Id, &ps[i].DBRec)
 		}
 		// { ps.i correspondent action is done in provider }
 		if e == nil {
-			chg.SRec = append(chg.SRec, chgDiff(ps[i]))
+			chg.SRec = append(chg.SRec, ps[i])
 		} else {
-			chg.FRec = append(chg.FRec, chgDiff(ps[i]))
+			chg.FRec = append(chg.FRec, ps[i])
 		}
 		// { the change is recorded according to the result }
 		i = i + 1

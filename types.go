@@ -107,16 +107,21 @@ type Diff struct {
 }
 
 type DBRecord struct {
-	Id string `json:"id"`
 	//database key field
-	IN string `json:"in"`
+	//DN in LDAP
+	Id string `json:"id"`
 	//identity number
-	Name string `json:"name"`
+	//employeeID in LDAP
+	IN string `json:"in"`
 	//person name
-	Addr string `json:"addr"`
+	//displayName in LDAP
+	Name string `json:"name"`
 	//address
-	Tel string `json:"tel"`
+	//streetAddress in LDAP
+	Addr string `json:"addr"`
 	//telephone number
+	//telephoneNumber in LDAP
+	Tel string `json:"tel"`
 }
 
 // isCandidate ≡ ¬hasId ∨ existsSimilar

@@ -3,20 +3,19 @@ package db
 import (
 	"github.com/lamg/tesis"
 	a "github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 )
 
-const (
-	//ldap server address
-	lda = "10.2.24.250:636"
-	//account suffix
-	sf = "@upr.edu.cu"
-)
-
-var u, p string
+// user
+// password
+// account suffix
+// ldap server address
+var u, p, lda, sf string
 
 func init() {
-	u, p = "Administrator", "$adButTrue"
+	u, p, lda, sf = os.Getenv("AD_USER"), os.Getenv("AD_PASS"),
+		os.Getenv("AD_ADDR"), os.Getenv("AD_SUFF")
 }
 
 func TestLDAPAuth(t *testing.T) {
@@ -27,6 +26,7 @@ func TestLDAPAuth(t *testing.T) {
 	if a.NoError(t, e) {
 		var b bool
 		b, e = l.Authenticate(u, p)
+		a.NoError(t, e)
 		a.True(t, b, "Failed authentication")
 	}
 }
@@ -103,7 +103,7 @@ func TestUpdate(t *testing.T) {
 			Addr: "Briones Montoto",
 			Tel:  "48791438",
 		}
-		e = r.Update("luis.mendez", dr)
+		e = r.Update("CN=Luis Angel Mendez Gort,OU=_GrupoRedes,DC=upr,DC=edu,DC=cu", dr)
 	}
 	var rc *tesis.DBRecord
 	if a.NoError(t, e) {

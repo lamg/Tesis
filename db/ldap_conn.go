@@ -27,27 +27,23 @@ func (l *LDAPAuth) Create(dn string,
 
 	rq = ldap.NewAddRequest(dn)
 	rq.Attribute(IN, []string{d.IN})
-	rq.Attribute(CN, []string{d.Name})
+	rq.Attribute(displayName, []string{d.Name})
 	rq.Attribute(streetAddress, []string{d.Addr})
 	rq.Attribute(telephoneNumber, []string{d.Tel})
 	e = l.c.Add(rq)
 	return
 }
 
-func (l *LDAPAuth) Update(us string,
+func (l *LDAPAuth) Update(dn string,
 	d *tesis.DBRecord) (e error) {
-	var dn string
-	dn, e = SearchDN(us, l.c)
-	if e == nil {
-		// dn is us distinguished name
-		var rq *ldap.ModifyRequest
-		rq = ldap.NewModifyRequest(dn)
-		rq.Replace(IN, []string{d.IN})
-		rq.Replace(displayName, []string{d.Name})
-		rq.Replace(streetAddress, []string{d.Addr})
-		rq.Replace(telephoneNumber, []string{d.Tel})
-		e = l.c.Modify(rq)
-	}
+	// dn is us distinguished name
+	var rq *ldap.ModifyRequest
+	rq = ldap.NewModifyRequest(dn)
+	rq.Replace(IN, []string{d.IN})
+	rq.Replace(displayName, []string{d.Name})
+	rq.Replace(streetAddress, []string{d.Addr})
+	rq.Replace(telephoneNumber, []string{d.Tel})
+	e = l.c.Modify(rq)
 	return
 }
 
@@ -111,23 +107,6 @@ func NewLDAPAuth(lda, sf string) (l *LDAPAuth, e error) {
 func (l *LDAPAuth) Authenticate(u, p string) (b bool, e error) {
 	e = l.c.Bind(u+l.sf, p)
 	b = e == nil
-	/*if b {
-		var ms []string
-		ea = Search(u, m.lauth.c)
-		ms = ea.GetAttributeValues("memberOf")
-		sort.Strings(ms)
-		var r int
-		var grp string
-		grp = "OU=Gestion" //provisional
-		//TODO definir como se va a marcar a los
-		//usuarios y administradores de este programa
-		//en el directorio activo
-		r = sort.SearchStrings(ms, grp)
-		b = r != len(ms) && ms[r] == grp
-	}
-	// { u belongs to synchronizers group or synchronizers
-	// admin group}
-	*/
 	return
 }
 
@@ -160,13 +139,13 @@ func (l *LDAPAuth) UserRecord(us string) (d *tesis.DBRecord, e error) {
 	var flr string
 	var n *ldap.Entry
 	flr, ats = fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))", us),
-		[]string{CN, DN, IN, streetAddress, telephoneNumber}
+		[]string{displayName, DN, IN, streetAddress, telephoneNumber}
 	n, e = SearchOne(flr, ats, l.c)
 	if e == nil {
 		d = &tesis.DBRecord{
 			Id:   n.GetAttributeValue(DN),
 			IN:   n.GetAttributeValue(IN),
-			Name: n.GetAttributeValue(CN),
+			Name: n.GetAttributeValue(displayName),
 			Addr: n.GetAttributeValue(streetAddress),
 			Tel:  n.GetAttributeValue(telephoneNumber),
 		}
@@ -180,7 +159,7 @@ func (l *LDAPAuth) Close() (e error) {
 }
 
 func Search(u string, c *ldap.Conn) (av []string, e error) {
-	var filter = fmt.Sprintf("(&(objectClass=user)(cn=%s))",
+	var filter = fmt.Sprintf("(&(objectClass=user)(displayName=%s))",
 		u)
 	var attrs = []string{}
 	var n *ldap.Entry
@@ -200,7 +179,7 @@ func (l *LDAPAuth) Records() (us []tesis.DBRecord, e error) {
 	var f string
 	var a []string
 	f, a = "(&(objectCategory=person)(objectClass=user))",
-		[]string{"cn", DN, IN}
+		[]string{displayName, DN, IN, streetAddress, telephoneNumber}
 	var n []*ldap.Entry
 	n, e = SearchFilter(f, a, l.c)
 	if e == nil && l.limit >= 0 && l.limit <= len(n) {
@@ -209,25 +188,14 @@ func (l *LDAPAuth) Records() (us []tesis.DBRecord, e error) {
 	us = make([]tesis.DBRecord, 0, len(n))
 	for _, i := range n {
 		var r tesis.DBRecord
-		r = tesis.DBRecord{}
-		var ln int
-		var b bool
-		ln = len(i.Attributes)
-		b = ln >= 1
-		if b {
-			r.Name = i.Attributes[0].Values[0]
-			b = ln >= 2
+		r = tesis.DBRecord{
+			Name: i.GetAttributeValue(displayName),
+			Id:   strings.Join(i.GetAttributeValues(DN), ","),
+			IN:   i.GetAttributeValue(IN),
+			Addr: i.GetAttributeValue(streetAddress),
+			Tel:  i.GetAttributeValue(telephoneNumber),
 		}
-		if b {
-			r.Id = strings.Join(i.Attributes[1].Values, ",")
-			b = ln >= 3
-		}
-		if b {
-			r.IN = i.Attributes[2].Values[0]
-		}
-		if r.Name != "" && r.Id != "" {
-			us = append(us, r)
-		}
+		us = append(us, r)
 	}
 	return
 }
@@ -242,7 +210,7 @@ func SearchDN(user string, c *ldap.Conn) (dn string, e error) {
 		[]string{DN}
 	n, e = SearchOne(filter, atts, c)
 	if e == nil {
-		dn = n.GetAttributeValue(DN)
+		dn = strings.Join(n.GetAttributeValues(DN), ",")
 	}
 	return
 }

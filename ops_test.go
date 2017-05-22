@@ -20,7 +20,9 @@ func TestSyncPend(t *testing.T) {
 		ss.UsrAct = make(map[string]*Activity)
 		ss.UsrAct[u] = &Activity{Proposed: ss.Pending}
 		ss.Pending = make([]Diff, 0)
-		e = ss.SyncPend(rcp, u)
+		var pr Reporter
+		pr = NewTRpr(t)
+		e = ss.SyncPend(rcp, u, pr)
 	}
 	assert.NoError(t, e)
 }

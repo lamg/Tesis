@@ -148,19 +148,15 @@ func (m *UPRManager) Pending(p int) (d *tesis.PageD, e error) {
 	var r []tesis.Diff
 	r = m.steSys.Pending //FIXME m.usrDt[u] = nil
 	if r != nil {
-		if r == nil {
-			r = make([]tesis.Diff, 1)
-			d = new(tesis.PageD)
-		} else {
-			var t []tesis.Diff
-			var a, b []interface{}
-			a = ConvDiffI(r)
-			var ps int
-			b, _, _, ps = pageSlice(a, m.pgLen, p)
-			t = ConvIDiff(b)
-			d = &tesis.PageD{Total: ps, PageN: p, DiffP: t}
-		}
+		var t []tesis.Diff
+		var a, b []interface{}
+		a = ConvDiffI(r)
+		var ps int
+		b, _, _, ps = pageSlice(a, m.pgLen, p)
+		t = ConvIDiff(b)
+		d = &tesis.PageD{Total: ps, PageN: p, DiffP: t}
 	} else {
+		m.steSys.Pending = make([]tesis.Diff, 0)
 		d = new(tesis.PageD)
 	}
 	return

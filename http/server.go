@@ -217,11 +217,13 @@ func pendH(w h.ResponseWriter, r *h.Request) {
 	var e error
 	_, e = parseUserName(r, &pkey.PublicKey)
 	var bs []byte
-	if e != nil && r.Method == h.MethodPost {
-		bs, e = ioutil.ReadAll(r.Body)
-		r.Body.Close()
-	} else {
-		e = errUnsMeth(r.Method, pendP)
+	if e == nil {
+		if r.Method == h.MethodPost {
+			bs, e = ioutil.ReadAll(r.Body)
+			r.Body.Close()
+		} else {
+			e = errUnsMeth(r.Method, pendP)
+		}
 	}
 	var pn *tesis.PageN
 	if e == nil {

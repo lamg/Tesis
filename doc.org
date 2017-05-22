@@ -118,10 +118,11 @@
  #+END_SRC
  
 * Tasks
-- Test RevertProp
-- write changes to tesis.StateSys to file
-- get access to ldap and test in production mode
-- 
+- Test the project taking into account that LDAPAuth.Records
+	returns DBRecords where Name is attribute displayName in
+	AD.
+- Test synchronization of proposed changes
+- Error while recording changes after synchronization
 * Rules
 - the user and passwords to access LDAP and SIGENU are env(UPR_USER)
   and env(UPR_PASS).
