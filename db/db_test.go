@@ -40,12 +40,13 @@ func TestPending(t *testing.T) {
 
 func TestPropose(t *testing.T) {
 	var pr []string
-	pr = []string{"0"}
+	pr = []string{"91742be:1501970c670:-3d"}
 	//each proposed exists in pending
 	var um *UPRManager
 	var e error
 	var dm tesis.UserDB
-	dm = &tesis.DummyManager{}
+	var user string
+	dm, user = &tesis.DummyManager{}, "lamg"
 	//FIXME no esta leyendo el archivo
 	var rd io.Reader
 	var wr io.Writer
@@ -54,10 +55,25 @@ func TestPropose(t *testing.T) {
 
 	um, e = NewUPRManager(rd, wr, dm)
 	if a.NoError(t, e) {
-		e = um.Propose("lamg", pr)
+		e = um.Propose(user, pr)
 	}
-	a.NoError(t, e)
+	var pd *tesis.PageD
+	if a.NoError(t, e) {
+		pd, e = um.Pending(0)
+	}
+	var pp *tesis.PageD
+	if a.NoError(t, e) && a.True(t, len(pd.DiffP) == 0,
+		"len %d ≠ 0", len(pd.DiffP)) {
+		pp, e = um.Proposed(user, 0)
+		a.True(t, e == nil && pp.DiffP != nil &&
+			len(pp.DiffP) == 1 &&
+			pp.DiffP[0].DBRec.Id == pr[0])
+	}
+
 	//each proposed doesn't exists in pending
+}
+
+func TestRevertProp(t *testing.T) {
 }
 
 func TestSymDiff0(t *testing.T) {

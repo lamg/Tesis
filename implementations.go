@@ -108,6 +108,6 @@ func toStd(s string) (t string) {
 func (d Diff) Equals(c interface{}) (b bool) {
 	var x Diff
 	x, b = c.(Diff)
-	b = b && d.DBRec.Equals(x.DBRec)
+	b = b && d.DBRec.Id == x.DBRec.Id
 	return
 }

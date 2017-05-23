@@ -194,7 +194,7 @@ func propH(w h.ResponseWriter, r *h.Request) {
 		if e == nil {
 			e = db.Propose(us, sel)
 		}
-	} else if post {
+	} else if e == nil && post {
 		var pn *tesis.PageN
 		pn = new(tesis.PageN)
 		e = json.Unmarshal(bs, pn)

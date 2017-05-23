@@ -82,7 +82,6 @@ func (m *UPRManager) Propose(u string, ds []string) (e error) {
 	}
 	var d []tesis.Diff
 	d = tesis.CreateDiff(ds)
-
 	var r *tesis.Activity
 	r = m.steSys.UsrAct[u]
 	if r == nil {
@@ -97,6 +96,7 @@ func (m *UPRManager) Propose(u string, ds []string) (e error) {
 	f, g = tesis.ConvDiffEq(m.steSys.Pending),
 		tesis.ConvDiffEq(d)
 	h, l = tesis.DiffInt(f, g)
+
 	var k, n []tesis.Diff
 	k, n = tesis.ConvEqDiff(h), tesis.ConvEqDiff(l)
 	//{ k = 'k - d  ∧  n = 'k ∩ d }
