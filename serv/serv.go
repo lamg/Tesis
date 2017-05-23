@@ -6,6 +6,8 @@ import (
 	"github.com/lamg/tesis/db"
 	"github.com/lamg/tesis/http"
 	"log"
+	"os"
+	"os/signal"
 )
 
 func main() {
@@ -38,6 +40,10 @@ func main() {
 		fl, e = tesis.NewFileHandler(*dtf)
 	}
 	if e == nil {
+		var sg chan os.Signal
+		sg = make(chan os.Signal, 1)
+		signal.Notify(sg, os.Interrupt)
+		go closeFl(sg, fl)
 		um, e = db.NewUPRManager(fl, fl, qr)
 	}
 	if e == nil {
@@ -46,4 +52,9 @@ func main() {
 	if e != nil {
 		log.Fatal(e)
 	}
+}
+
+func closeFl(sg chan os.Signal, fl *tesis.FileHandler) {
+	<-sg
+	fl.Close()
 }
