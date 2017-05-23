@@ -171,12 +171,12 @@ func (m *UPRManager) RevertProp(u string, r []string) (e error) {
 		var rd []tesis.Diff
 		rd = tesis.CreateDiff(r)
 		var a, b, c, e []tesis.Eq
-		a, b = tesis.ConvDiffEq(m.steSys.Pending),
+		a, b = tesis.ConvDiffEq(m.steSys.UsrAct[u].Proposed),
 			tesis.ConvDiffEq(rd)
 		c, e = tesis.DiffInt(a, b)
-		m.steSys.Pending, m.steSys.UsrAct[u].Proposed =
+		m.steSys.UsrAct[u].Proposed, m.steSys.Pending =
 			tesis.ConvEqDiff(c),
-			append(m.steSys.UsrAct[u].Proposed,
+			append(m.steSys.Pending,
 				tesis.ConvEqDiff(e)...)
 	}
 	return

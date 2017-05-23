@@ -74,6 +74,37 @@ func TestPropose(t *testing.T) {
 }
 
 func TestRevertProp(t *testing.T) {
+	var um *UPRManager
+	var e error
+	var rd io.Reader
+	var wr io.Writer
+	var dm tesis.UserDB
+	var pr []string
+	var user string
+	dm = &tesis.DummyManager{}
+
+	//FIXME no esta leyendo el archivo
+	rd, wr = bytes.NewBufferString(ssJSON),
+		bytes.NewBufferString("")
+	um, e = NewUPRManager(rd, wr, dm)
+	if a.NoError(t, e) {
+		pr, user = []string{"91742be:1501970c670:-3d"}, "lamg"
+	}
+	e = um.Propose(user, pr)
+	if a.NoError(t, e) {
+		e = um.RevertProp(user, pr)
+	}
+	var pp *tesis.PageD
+	if a.NoError(t, e) {
+		pp, e = um.Proposed(user, 0)
+	}
+	var pd *tesis.PageD
+	if a.NoError(t, e) {
+		pd, e = um.Pending(0)
+	}
+	a.True(t, e == nil && pp.DiffP != nil &&
+		len(pp.DiffP) == 0 && pd.DiffP != nil &&
+		len(pd.DiffP) == 1 && pd.DiffP[0].DBRec.Id == pr[0])
 }
 
 func TestSymDiff0(t *testing.T) {

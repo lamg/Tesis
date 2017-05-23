@@ -106,6 +106,8 @@ func toStd(s string) (t string) {
 }
 
 func (d Diff) Equals(c interface{}) (b bool) {
+	//this is done for UPRManager.Proposed and
+	//UPRManager.RevertProp
 	var x Diff
 	x, b = c.(Diff)
 	b = b && d.DBRec.Id == x.DBRec.Id
