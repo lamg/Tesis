@@ -76,13 +76,12 @@
 |        | <25>                      | <26>                       |
 |--------+---------------------------+----------------------------|
 | /auth  | POST-empty-Credentials    | if ok → 200-empty-JWT   ¬ok 400-empty-error fi |
-| /uinf  | GET-JWT-empty             | if ok → 200-empty-UserInfo   ¬ok → 400-empty-error fi |
 | /recr  | POST-JWT-PageN            | if ok → 200-empty-PageC   ¬ok → 400-empty-Error fi |
 | /prop  | PATCH-JWT-[]string        | if ok → 200-empty-empty   ¬ok → 400-empty-error fi |
 | /prop  | POST-JWT-PageN            | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
 | /pend  | POST-JWT-PageN            | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
 | /chck  | GET-JWT-empty             | if ok → 200-empty-empty   ¬ok → 400-empty-empty |
-| /revr  | PATCH-JWT-[]string        | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
+| /revp  | PATCH-JWT-[]string        | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
 - The frontend is the following multiprogram
 	
  #+BEGIN_SRC
