@@ -57,4 +57,5 @@ func main() {
 func closeFl(sg chan os.Signal, fl *tesis.FileHandler) {
 	<-sg
 	fl.Close()
+	os.Exit(0)
 }
