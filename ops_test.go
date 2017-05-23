@@ -25,6 +25,14 @@ func TestSyncPend(t *testing.T) {
 		e = ss.SyncPend(rcp, u, pr)
 	}
 	assert.NoError(t, e)
+	if assert.True(t, ss.UsrAct != nil &&
+		ss.UsrAct[u] != nil) {
+		var dr DBRecord
+		dr = ss.UsrAct[u].Record[0].SRec[0].DBRec
+		if !assert.True(t, dr.Equals(dbRec)) {
+			t.Log(dr)
+		}
+	}
 }
 
 var ssJSON = `
@@ -54,3 +62,11 @@ var ssJSON = `
 }
 
 `
+
+var dbRec = DBRecord{
+	Id:   "91742be:1501970c670:-3d",
+	IN:   "95120923357",
+	Name: "Claudia Crúz Labrador",
+	Addr: "Km 10 Carretera Viñales, CPA Isidro Barre do, Viñalesdo",
+	Tel:  "",
+}
