@@ -2,6 +2,7 @@ package tesis
 
 import (
 	"fmt"
+	"io"
 )
 
 type DummyManager struct {
@@ -34,6 +35,10 @@ func NewDummyManager() (m *DummyManager) {
 		},
 		pr: make([]Diff, 0),
 	}
+	return
+}
+
+func (m *DummyManager) Close() (e error) {
 	return
 }
 
@@ -182,5 +187,29 @@ func (d *DRCP) Update(id string, r *DBRecord) (e error) {
 
 func (d *DRCP) Delete(id string) (e error) {
 	d.l.Logf("Delete id: %s")
+	return
+}
+
+type rwc struct {
+	r io.Reader
+	w io.Writer
+}
+
+func NewRWC(r io.Reader, w io.Writer) (c io.ReadWriteCloser) {
+	c = &rwc{r: r, w: w}
+	return
+}
+
+func (c *rwc) Write(p []byte) (n int, e error) {
+	n, e = c.w.Write(p)
+	return
+}
+
+func (c *rwc) Read(p []byte) (n int, e error) {
+	n, e = c.r.Read(p)
+	return
+}
+
+func (c *rwc) Close() (e error) {
 	return
 }

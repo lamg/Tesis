@@ -31,7 +31,6 @@ func (h *FileHandler) Read(p []byte) (n int, e error) {
 
 func (h *FileHandler) Write(p []byte) (n int, e error) {
 	n, e = h.wfle.Write(p)
-	h.wfle.Sync()
 	return
 }
 

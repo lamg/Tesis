@@ -25,12 +25,10 @@ func TestPending(t *testing.T) {
 	var e error
 	var dm tesis.UserDB
 	dm = &tesis.DummyManager{}
-	var rd io.Reader
-	var wr io.Writer
-	rd, wr = bytes.NewBufferString(ssJSON),
-		bytes.NewBufferString("")
-
-	um, e = NewUPRManager(rd, wr, dm)
+	var rwc io.ReadWriteCloser
+	rwc = tesis.NewRWC(bytes.NewBufferString(ssJSON),
+		bytes.NewBufferString(""))
+	um, e = NewUPRManager(rwc, dm)
 	var pd *tesis.PageD
 	if a.NoError(t, e) {
 		pd, e = um.Pending(0)
@@ -48,12 +46,10 @@ func TestPropose(t *testing.T) {
 	var user string
 	dm, user = &tesis.DummyManager{}, "lamg"
 	//FIXME no esta leyendo el archivo
-	var rd io.Reader
-	var wr io.Writer
-	rd, wr = bytes.NewBufferString(ssJSON),
-		bytes.NewBufferString("")
-
-	um, e = NewUPRManager(rd, wr, dm)
+	var rwc io.ReadWriteCloser
+	rwc = tesis.NewRWC(bytes.NewBufferString(ssJSON),
+		bytes.NewBufferString(""))
+	um, e = NewUPRManager(rwc, dm)
 	if a.NoError(t, e) {
 		e = um.Propose(user, pr)
 	}
@@ -76,17 +72,15 @@ func TestPropose(t *testing.T) {
 func TestRevertProp(t *testing.T) {
 	var um *UPRManager
 	var e error
-	var rd io.Reader
-	var wr io.Writer
 	var dm tesis.UserDB
 	var pr []string
 	var user string
 	dm = &tesis.DummyManager{}
 
-	//FIXME no esta leyendo el archivo
-	rd, wr = bytes.NewBufferString(ssJSON),
-		bytes.NewBufferString("")
-	um, e = NewUPRManager(rd, wr, dm)
+	var rwc io.ReadWriteCloser
+	rwc = tesis.NewRWC(bytes.NewBufferString(ssJSON),
+		bytes.NewBufferString(""))
+	um, e = NewUPRManager(rwc, dm)
 	if a.NoError(t, e) {
 		pr, user = []string{"91742be:1501970c670:-3d"}, "lamg"
 	}

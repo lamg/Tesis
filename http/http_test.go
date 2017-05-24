@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/lamg/tesis"
-	dbs "github.com/lamg/tesis/db"
 	a "github.com/stretchr/testify/assert"
 	"io"
 	"io/ioutil"
@@ -43,7 +42,7 @@ func TestAuth(t *testing.T) {
 	if a.NoError(t, e) {
 		var cr *tesis.Credentials
 		r = h.NewRecorder()
-		cr = &tesis.Credentials{user, "a"}
+		cr = &tesis.Credentials{user, user}
 		bs, e = json.Marshal(cr)
 	}
 	var q *http.Request
@@ -345,17 +344,11 @@ func errAuth() (e error) {
 
 func TestServ(t *testing.T) {
 	var d tesis.DBManager
-	var y tesis.UserDB
 	var jsonC, clAddr, srAddr string
 	var e error
-	y, jsonC, clAddr, srAddr = tesis.NewDummyManager(),
+	d, jsonC, clAddr, srAddr = tesis.NewDummyManager(),
 		"application/json", "https://localhost:10443",
 		":10443"
-	var rd io.Reader
-	var wr io.Writer
-	rd, wr = bytes.NewBufferString(ssJSON),
-		bytes.NewBufferString("")
-	d, e = dbs.NewUPRManager(rd, wr, y)
 	if a.NoError(t, e) {
 		go ListenAndServe(srAddr, d, "cert.pem", "key.pem")
 	}

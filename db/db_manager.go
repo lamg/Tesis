@@ -13,11 +13,11 @@ type UPRManager struct {
 	steSys *tesis.StateSys
 	// { JSONRepr.usrDt = contents.dtFile
 	//   ≡ exists.dtFile }
-	writer io.Writer
+	writer io.WriteCloser
 	pgLen  int // { pgLen ≥ 0 }
 }
 
-func NewUPRManager(f io.Reader, w io.Writer, a tesis.UserDB) (m *UPRManager, e error) {
+func NewUPRManager(f io.ReadWriteCloser, a tesis.UserDB) (m *UPRManager, e error) {
 	var bs []byte
 	bs, e = ioutil.ReadAll(f)
 	var ss *tesis.StateSys
@@ -32,7 +32,7 @@ func NewUPRManager(f io.Reader, w io.Writer, a tesis.UserDB) (m *UPRManager, e e
 		m = &UPRManager{
 			usrDB:  a,
 			steSys: ss,
-			writer: w,
+			writer: f,
 			pgLen:  10,
 		}
 	}
@@ -102,16 +102,16 @@ func (m *UPRManager) Propose(u string, ds []string) (e error) {
 	//{ k = 'k - d  ∧  n = 'k ∩ d }
 	m.steSys.Pending = k
 	r.Proposed = append(r.Proposed, n...)
+	return
+}
 
-	//
+func (m *UPRManager) Close() (e error) {
 	var bs []byte
-	if e == nil {
-		bs, e = json.MarshalIndent(m.steSys, "", "\t")
-	}
+	bs, e = json.MarshalIndent(m.steSys, "", "\t")
 	if e == nil {
 		_, e = m.writer.Write(bs)
+		m.writer.Close()
 	}
-	// { contents.(m.dtFile) = JSONRep.(m.usrDt) ≡ e = nil }
 	return
 }
 

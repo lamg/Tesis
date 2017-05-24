@@ -40,13 +40,13 @@ func main() {
 		fl, e = tesis.NewFileHandler(*dtf)
 	}
 	if e == nil {
+		um, e = db.NewUPRManager(fl, qr)
+	}
+	if e == nil {
 		var sg chan os.Signal
 		sg = make(chan os.Signal, 1)
 		signal.Notify(sg, os.Interrupt)
-		go closeFl(sg, fl)
-		um, e = db.NewUPRManager(fl, fl, qr)
-	}
-	if e == nil {
+		go closeM(sg, um)
 		http.ListenAndServe(*hp, um, *cr, *ky)
 	}
 	if e != nil {
@@ -54,8 +54,8 @@ func main() {
 	}
 }
 
-func closeFl(sg chan os.Signal, fl *tesis.FileHandler) {
+func closeM(sg chan os.Signal, m tesis.DBManager) {
 	<-sg
-	fl.Close()
+	m.Close()
 	os.Exit(0)
 }
