@@ -72,7 +72,7 @@ func main() {
 		// { UserStr.u ∧ RecordReceptor.rcp ∧
 		//   StateSys.ss ≢ e = nil }
 	}
-	println("ok")
+
 	if e == nil && ss.UsrAct != nil &&
 		ss.UsrAct[*u] != nil &&
 		ss.UsrAct[*u].Proposed != nil &&

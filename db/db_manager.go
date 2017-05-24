@@ -41,6 +41,13 @@ func NewUPRManager(f io.ReadWriteCloser, a tesis.UserDB) (m *UPRManager, e error
 
 func (m *UPRManager) Authenticate(u, p string) (b bool, e error) {
 	b, e = m.usrDB.Authenticate(u, p)
+	if e == nil && b && m.steSys.UsrAct == nil {
+		m.steSys.UsrAct = make(map[string]*tesis.Activity)
+		m.steSys.UsrAct[u] = &tesis.Activity{
+			Proposed: make([]tesis.Diff, 0),
+			Record:   make([]tesis.Change, 0),
+		}
+	}
 	return
 }
 
@@ -50,48 +57,31 @@ func (m *UPRManager) UserInfo(u string) (n *tesis.UserInfo, e error) {
 }
 
 func (m *UPRManager) Record(u string, p int) (c *tesis.PageC, e error) {
+	// { Authenticated.u }
 	var r []tesis.Change
 	r = m.steSys.UsrAct[u].Record
-	if r != nil {
-		var t []tesis.Change
-		var a, b []interface{}
-		a = make([]interface{}, len(r))
-		for i, j := range r {
-			a[i] = j
-		}
-		var ps int
-		b, _, _, ps = pageSlice(a, m.pgLen, p)
-		t = make([]tesis.Change, len(b))
-		for i, j := range b {
-			t[i] = j.(tesis.Change)
-		}
-		c = &tesis.PageC{Total: ps, PageN: p, ChangeP: t}
-	} else {
-		m.steSys.UsrAct[u] = new(tesis.Activity)
-		c = new(tesis.PageC)
+
+	var t []tesis.Change
+	var a, b []interface{}
+	a = make([]interface{}, len(r))
+	for i, j := range r {
+		a[i] = j
 	}
+	var ps int
+	b, _, _, ps = pageSlice(a, m.pgLen, p)
+	t = make([]tesis.Change, len(b))
+	for i, j := range b {
+		t[i] = j.(tesis.Change)
+	}
+	c = &tesis.PageC{Total: ps, PageN: p, ChangeP: t}
 	return
 }
 
 func (m *UPRManager) Propose(u string, ds []string) (e error) {
-	if m.steSys == nil {
-		m.steSys = new(tesis.StateSys)
-	}
-	if m.steSys.UsrAct == nil {
-		m.steSys.UsrAct = make(map[string]*tesis.Activity)
-	}
+	// { Authenticated.u }
 	var d []tesis.Diff
 	d = tesis.CreateDiff(ds)
-	var r *tesis.Activity
-	r = m.steSys.UsrAct[u]
-	if r == nil {
-		r = new(tesis.Activity)
-		m.steSys.UsrAct[u] = r
-	}
 
-	if r.Proposed == nil {
-		r.Proposed = make([]tesis.Diff, 0)
-	}
 	var f, g, h, l []tesis.Eq
 	f, g = tesis.ConvDiffEq(m.steSys.Pending),
 		tesis.ConvDiffEq(d)
@@ -101,7 +91,7 @@ func (m *UPRManager) Propose(u string, ds []string) (e error) {
 	k, n = tesis.ConvEqDiff(h), tesis.ConvEqDiff(l)
 	//{ k = 'k - d  ∧  n = 'k ∩ d }
 	m.steSys.Pending = k
-	r.Proposed = append(r.Proposed, n...)
+	m.steSys.UsrAct[u].Proposed = append(m.steSys.UsrAct[u].Proposed, n...)
 	return
 }
 
@@ -183,9 +173,11 @@ func (m *UPRManager) RevertProp(u string, r []string) (e error) {
 }
 
 func pageSlice(s []interface{}, n, p int) (t []interface{}, a, b, ps int) {
+	// { n ≠ 0 }
 	var rm int
 	ps = len(s) / n //amount of pages
 	rm = len(s) % n //amount of elements in reminder page
+	t = make([]interface{}, 0)
 	if rm != 0 {
 		// {there is reminder page}
 		ps++
