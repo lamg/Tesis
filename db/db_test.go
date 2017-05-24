@@ -50,6 +50,7 @@ func TestPropose(t *testing.T) {
 	rwc = tesis.NewRWC(bytes.NewBufferString(ssJSON),
 		bytes.NewBufferString(""))
 	um, e = NewUPRManager(rwc, dm)
+	um.Authenticate(user, user)
 	if a.NoError(t, e) {
 		e = um.Propose(user, pr)
 	}
@@ -84,7 +85,9 @@ func TestRevertProp(t *testing.T) {
 	if a.NoError(t, e) {
 		pr, user = []string{"91742be:1501970c670:-3d"}, "lamg"
 	}
+	um.Authenticate(user, user)
 	e = um.Propose(user, pr)
+
 	if a.NoError(t, e) {
 		e = um.RevertProp(user, pr)
 	}

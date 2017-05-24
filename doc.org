@@ -122,6 +122,7 @@
 	AD.
 - Test synchronization of proposed changes
 - Error while recording changes after synchronization
+- Only users in determined group have access to the system
 * Rules
 - the user and passwords to access LDAP and SIGENU are env(UPR_USER)
   and env(UPR_PASS).
