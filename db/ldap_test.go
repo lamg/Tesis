@@ -55,14 +55,15 @@ func TestGetLDAPEntry(t *testing.T) {
 	var l *LDAPAuth
 	var e error
 
-	l, e = NewLDAPAuth(lda, sf)
+	l, e = NewLDAPAuth("10.2.24.35:636", sf)
 	var b bool
 	if a.NoError(t, e) {
-		b, e = l.Authenticate(u, p)
+		b, e = l.Authenticate(os.Getenv("UPR_USER"),
+			os.Getenv("UPR_PASS"))
 	}
 	var r []string
 	if a.True(t, b, "Failed authentication") {
-		r, e = Search("Luis Angel Mendez Gort", l.c)
+		r, e = Search("nexus", l.c)
 	}
 	if a.NoError(t, e) {
 		for _, j := range r {
