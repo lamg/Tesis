@@ -10,11 +10,25 @@
 - serv: serves a web interface for proposing and
 	viewing future and past changes.
 ** Command pdiff
+- a variable x:!, after the assignation of a defined
+	value holds x:?,!
 #+BEGIN_SRC
 |[
+{ a:OrgProvP,? ∧ b:DstProvP,? ∧ c:DiffRep,! ∧ e:error,! }
+pdiff
+{ ‌⟨∀i: 0 ≤ i < len.c: Sim.(c.i) ∧ ¬Eq.(c.i)
+∧ Pair.(c.i).ax.bx ∧ OrgProv.ax.a
+∧ DstProv.bx.b⟩ ≡ e = nil }
+]|
 
+|[
+{ a:OrgProvP,? ∧ ax:OrgProv,! }
+
+{ OrgProv.a.ax ≡ e = nil }
 ]|
 #+END_SRC
+** Command sync
+** Command serv
 * HTTP REST API specification
 - HTTPS server listening in 10443
 	- Done in ~http/server.go~
