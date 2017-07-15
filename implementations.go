@@ -30,7 +30,9 @@ func NewTRpr(t Logger) (r *TRpr) {
 	return
 }
 
-func (r *TRpr) Progress(p float32) {
+func (r *TRpr) Progress(current, total int) {
+	var p float32
+	p = float32(current) / float32(total)
 	if r.Log {
 		r.t.Logf("%.0f", p*100)
 	}
@@ -44,7 +46,9 @@ func NewPRpr() (r *PRpr) {
 	return
 }
 
-func (r *PRpr) Progress(p float32) {
+func (r *PRpr) Progress(current, total int) {
+	var p float32
+	p = float32(current) / float32(total)
 	fmt.Fprintf(os.Stderr, "%.2f%s\r", p*100, "%")
 }
 

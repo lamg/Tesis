@@ -23,9 +23,7 @@ func (ss *StateSys) SyncPend(r RecordReceptor,
 		FRec: make([]Diff, 0),
 	}
 	for i != len(ps) {
-		var prc float32
-		prc = float32(i) / float32(len(ps))
-		rp.Progress(prc)
+		rp.Progress(i, len(ps))
 		if ps[i].Exists && ps[i].Mismatch {
 			// { ps.i is an inconsistency }
 			e = r.Update(ps[i].LDAPRec.Id, &ps[i].DBRec)

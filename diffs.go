@@ -1,23 +1,22 @@
 package tesis
 
+// TODO derive this algorithm
 // This algorithm is a "descendant" of DiffInt
 // c = a - b
 // d and e are the couples of similar not equal elements
 // f = b - c
 func DiffSym(a, b []Sim, rp Reporter) (c, d, e, f []Sim) {
 	var i, j, k, l int //i,j for a and k,l for b
-	var tot, prog float32
-	i, j, k, l, c, d, e, f, tot, prog = 0, 0, 0, 0,
+	var tot int
+	i, j, k, l, c, d, e, f, tot = 0, 0, 0, 0,
 		make([]Sim, 0, len(a)),
 		make([]Sim, 0, max(len(a), len(b))),
 		make([]Sim, 0, max(len(a), len(b))),
 		make([]Sim, 0, len(b)),
-		float32(len(a)*len(b)),
-		0
+		len(a)*len(b)
 	for !(i == len(a) && k == len(b)) {
 		var ra, rb bool
-		prog = float32(i*k) / tot
-		rp.Progress(prog)
+		rp.Progress(i*k, tot)
 		ra, rb = i != len(a) && j != len(b) &&
 			a[i].Similar(b[j]),
 			k != len(b) && l != len(a) && b[k].Similar(a[l])

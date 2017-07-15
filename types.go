@@ -138,7 +138,7 @@ type Sim interface {
 }
 
 type Reporter interface {
-	Progress(float32)
+	Progress(current, total int)
 }
 
 type Logger interface {

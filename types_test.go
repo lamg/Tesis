@@ -1,7 +1,7 @@
 package tesis
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -56,12 +56,16 @@ func TestDiffSym(t *testing.T) {
 	var rp *TRpr
 	rp = NewTRpr(t)
 	c, d, e, f = DiffSym(a, b, rp)
-	assert.True(t, eqsim(x, c))
-	assert.True(t, eqsim(y, d))
-	assert.True(t, eqsim(y, e))
+	require.True(t, eqsim(x, c))
+	require.True(t, eqsim(y, d))
+	require.True(t, eqsim(y, e))
 	// error if but not significative
 	// since PDiff ignores c and
-	assert.True(t, eqsim(z, f))
+	t.Log(len(f))
+	for _, j := range f {
+		t.Logf("%v", j)
+	}
+	require.True(t, eqsim(z, f))
 }
 
 func conv(x []Nat) (y []Sim) {
@@ -88,5 +92,5 @@ func TestToStd(t *testing.T) {
 	var p, q, r string
 	p, q = "Luis Ángel Méndez Gort Ññ", "LuisangelMendezGortnn"
 	r = toStd(p)
-	assert.EqualValues(t, q, r)
+	require.EqualValues(t, q, r)
 }
