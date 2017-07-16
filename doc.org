@@ -13,4 +13,8 @@ qual es le base de datos con le registros original, e qual
 es le base de datos con le registros homologe e
 differente.
 
-Due registros 
+Due registros es considerate homologe si al corriger
+errores typographic in le textos de determinate campos
+homologe, iste es equal. Le usator debe specificar qual es
+le campos homologe.
+
