@@ -1,20 +1,182 @@
-#+TITLE: Synchronisation de bases de datos
-* Introduction
-In le Universitate de Pinar del Río existe duo bases de
-datos con registros homologe. Ma existe differentias inter
-iste actualmente que debe eliminar se.
+* Commands
+** Summary
+- pdiff: records the current differences between
+	LDAP and the selected database. Currently only
+	updates existent records in LDAP due to ambiguous
+	specification in the case of deletions and additions
+	(these are done manually).
+- sync: reads proposed changes for each user, and
+	performs them.
+- serv: serves a web interface for proposing and
+	viewing future and past changes.
+** Command pdiff
+#+BEGIN_SRC
+|[
 
-* Proceso de synchronisation
-Le proceso de synchronisation consiste in cercar le
-registros homologe e differente, e postea facer los equal
-per le scriptura de le registros original in loco de le
-registros homologe e differente. Le usator debe specificar
-qual es le base de datos con le registros original, e qual
-es le base de datos con le registros homologe e
-differente.
+]|
+#+END_SRC
+* HTTP REST API specification
+- HTTPS server listening in 10443
+	- Done in ~http/server.go~
+- The API prefix is ~/api~
+- Correspondence between suffix, request method-body, and 
+  response code-body; with the following definitions
 
-Due registros es considerate homologe si al corriger
-errores typographic in le textos de determinate campos
-homologe, iste es equal. Le usator debe specificar qual es
-le campos homologe.
+	#+BEGIN_SRC
+	AuthHeader: HTTP header with value "Auth" and JWT as value
+	Credentials: JSON {"user":username, "pass":password}
+	Error: JSON {"error":message}
+	Diff: JSON {
+    "ldapRec":DBRecord,
+    "dbRec":DBRecord,
+    "src":string,
+    "exists":bool, // exists in LDAP. True means 
+		// action must be determined by the value of 
+		// "mismatch". False means addition.
+    "mismatch":bool,// true means update, 
+		// false means delete.
+  }
+	DBRecord: JSON {
+	  "id":string,
+		"in":string,
+		"name":string,
+	}
+	Change: JSON {
+	  "time": DateTime,
+	  "srec": []Diff, //successfuly synchronized
+		"frec": []Diff, //failed to synchronize
+	}
+	Info: JSON { 
+    "userInfo": UsrInf,
+		"changeLog": []Change,
+		"proposed": []Diff,
+	  "pending": []Diff,
+  }
+	PageC: JSON {
+	  "total": Nat,
+		"pageN": Nat,
+		"changeP": []Change,
+	}
+	PageD: JSON {
+	  "total": Nat,
+		"pageN": Nat,
+		"diffP": []Diff,
+	}
+	UserInfo: JSON {
+	  "name": string,
+		"username": string,
+		"token": string,
+	}
+	PageN: JSON {
+	  "pageN": Nat,
+	}
+	#+END_SRC
+	
+| Suffix | Request method-AuthHeader-body | Response code-AuthHeader-body |
+|        | <25>                      | <26>                       |
+|--------+---------------------------+----------------------------|
+| /auth  | POST-empty-Credentials    | if ok → 200-empty-JWT   ¬ok 400-empty-error fi |
+| /recr  | POST-JWT-PageN            | if ok → 200-empty-PageC   ¬ok → 400-empty-Error fi |
+| /prop  | PATCH-JWT-[]string        | if ok → 200-empty-empty   ¬ok → 400-empty-error fi |
+| /prop  | POST-JWT-PageN            | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
+| /pend  | POST-JWT-PageN            | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
+| /chck  | GET-JWT-empty             | if ok → 200-empty-empty   ¬ok → 400-empty-empty |
+| /revp  | PATCH-JWT-[]string        | if ok → 200-empty-PageD   ¬ok → 400-empty-Error fi |
+- The frontend is the following multiprogram
+	
+ #+BEGIN_SRC
+ var j:JWT, e:Error, u:UsrInf, c:PageC,
+ pr:PageD, pe:PageD, sel: []Diff;
+ j, e := PostCredentialsToAuth()
+ ;if e = nil → u, e := GetWithJWTToUinf(j) 
+   e ≠ nil → skip
+ fi
+ ;if e = nil → c, e := PostWithJWTToRecr(j, 0)
+   e ≠ nil → skip
+ fi
+ ;if e = nil → e := PatchWithJWTToProp(j, sel)
+   e ≠ nil → skip
+ fi
+ ;if e = nil → pr, e := PostWithJWTToProp(j, 0)
+   e ≠ nil → skip
+ fi
+ ;if e = nil → pe, e := GetWithJWTToPend(j, 0)
+   e ≠ nil → skip
+ fi
+ ;if e = nil → Show(u);Show(c);Show(pr);Show(pe)
+   e ≠ nil → Show(e)
+ fi
+ { showedInfo ≡ e = nil }
+ #+END_SRC
+ 
+ #+BEGIN_SRC
+ con s:[]Diff, j:JWT;
+ var e:Error;
+ e := PostWithJWTToProp(j, s)
+ if e ≠ nil → Show(e) fi
+ #+END_SRC
+ 
+* Tasks
+- Test the project taking into account that LDAPAuth.Records
+	returns DBRecords where Name is attribute displayName in
+	AD.
+- Test synchronization of proposed changes
+- Error while recording changes after synchronization
+- Only users in determined group have access to the system
+* Rules
+- the user and passwords to access LDAP and SIGENU are env(UPR_USER)
+  and env(UPR_PASS).
+- additions and deletions are disabled in tesis.DiffSym
+	due to ambiguous specification.
 
+* LDAP fields
+- Name: objectClass, V:[top person organizationalPerson user]
+- Name: cn, V:[Luis Angel Mendez Gort]                                                                                
+- Name: sn, V:[Mendez Gort]                                                                                           
+- Name: description, V:[Estudiantes 4to Informática]
+- Name: telephoneNumber, V:[791438]                                                                                   
+- Name: givenName, V:[Luis Angel]
+- Name: distinguishedName, V:[CN=Luis Angel Mendez
+  Gort,OU=5to,OU=Info,OU=CRD,OU=CRD,OU=Pregrado,
+	OU=Estudiantes,OU=FCT,OU=Facultades,OU=_Usuarios,DC=upr,
+  DC=edu,DC=cu]
+- Name: instanceType, V:[4]                                                                                           
+- Name: whenCreated, V:[20130320153339.0Z]                                                                            
+- Name: whenChanged, V:[20170131150845.0Z]                                                                            
+- Name: displayName, V:[Luis Angel Mendez Gort]                                                                       
+- Name: uSNCreated, V:[137160]                                                                                        
+- Name: memberOf,
+  V:[CN=FCT-Info5,OU=ListasEstudiantes,OU=Gestion,OU=FCT,OU=Facultades,OU=_Usuarios,DC=upr,DC=edu,DC=cu
+  CN=UPR-Correo-Internacional-Est,OU=Correo,OU=Gestion,OU=_Usuarios,DC=upr,DC=edu,DC=cu
+  CN=UPR-Jabber,OU=Jabber,OU=Gestion,OU=_Usuarios,DC=upr,DC=edu,DC=cu
+  CN=UPR-Wifi,OU=Wifi,OU=Gestion,OU=_Usuarios,DC=upr,DC=edu,DC=cu
+  CN=UPR-Internet-Especial,OU=Internet,OU=Gestion,OU=_Usuarios,DC=upr,DC=edu,DC=cu]
+- Name: uSNChanged, V:[151056895]                                                                                     
+- Name: department, V:[101]                                                                                           
+- Name: streetAddress, V:[Edificio Panel No 5 Briones Montoto, Pinar
+  del Rio, Cuba]
+- Name: name, V:[Luis Angel Mendez Gort]                                                                              
+- Name: objectGUID,
+  V:Binary
+- Name: userAccountControl, V:[512]                                                                                   
+- Name: badPwdCount, V:[0]                                                                                            
+- Name: codePage, V:[0]                                                                                               
+- Name: countryCode, V:[0]                                                                                            
+- Name: employeeID, V:[89011914982]                                                                                   
+- Name: badPasswordTime, V:[131302096065074626]                                                                       
+- Name: lastLogoff, V:[0]                                                                                             
+- Name: lastLogon, V:[131302096113199010]                                                                             
+- Name: pwdLastSet, V:[131231952220030005]                                                                            
+- Name: primaryGroupID, V:[513]                                                                                       
+- Name: objectSid, V:Binary
+- Name: accountExpires, V:[9223372036854775807]                                                                       
+- Name: logonCount, V:[44]                                                                                            
+- Name: sAMAccountName, V:[luis.mendez]                                                                               
+- Name: sAMAccountType, V:[805306368]                                                                                 
+- Name: userPrincipalName, V:[luis.mendez@estudiantes.upr.edu.cu]                                                     
+- Name: objectCategory,
+  V:[CN=Person,CN=Schema,CN=Configuration,DC=upr,DC=edu,DC=cu]
+- Name: dSCorePropagationData, V:[20160922171036.0Z 20160908134959.0Z
+  20150828155109.0Z 20150204153642.0Z 16010714042848.0Z]
+- Name: lastLogonTimestamp, V:[131303489252969568]                                                                    
+- Name: mail, V:[luis.mendez@estudiantes.upr.edu.cu]                                                                  
