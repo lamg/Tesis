@@ -91,7 +91,6 @@ func NewLDAPProv(u, p, lda string, t int) (r tesis.RecordProvider, e error) {
 // New LDAP Authenticator connecting through TLS
 //  lds: LDAP server address
 //  sf: Suffix of user account (string after @)
-//  ldp: LDAP server port
 func NewLDAPAuth(lda, sf string) (l *LDAPAuth, e error) {
 	var cfg *tls.Config
 	cfg = &tls.Config{InsecureSkipVerify: true}
